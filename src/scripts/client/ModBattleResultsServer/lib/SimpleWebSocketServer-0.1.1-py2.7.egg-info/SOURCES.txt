@@ -1,0 +1,11 @@
+MANIFEST.in
+README.md
+setup.py
+SimpleWebSocketServer/SimpleExampleServer.py
+SimpleWebSocketServer/SimpleHTTPSServer.py
+SimpleWebSocketServer/SimpleWebSocketServer.py
+SimpleWebSocketServer/__init__.py
+SimpleWebSocketServer.egg-info/PKG-INFO
+SimpleWebSocketServer.egg-info/SOURCES.txt
+SimpleWebSocketServer.egg-info/dependency_links.txt
+SimpleWebSocketServer.egg-info/top_level.txt
