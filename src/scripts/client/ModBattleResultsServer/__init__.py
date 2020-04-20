@@ -15,19 +15,18 @@ previous_results = []
 class WebSocketHandler(WebSocket):
     @safe_callback
     def handleConnected(self):
-        host, port = self.address[:2]
-        origin = get(self.request.headers, 'Origin')
+        for data in previous_results:
+            self.sendMessage(data)
+
+        host, port, origin = self._connection_info
         if origin is not None:
             LOG_NOTE('%s connected on port %d (Origin: %s)' % (host, port, origin))
         else:
             LOG_NOTE('%s connected on port %d' % (host, port))
-        for data in previous_results:
-            self.sendMessage(data)
 
     @safe_callback
     def handleClose(self):
-        host, port = self.address[:2]
-        origin = get(self.request.headers, 'Origin')
+        host, port, origin = self._connection_info
         if origin is not None:
             LOG_NOTE('%s disconnected from port %d (Origin: %s)' % (host, port, origin))
         else:
@@ -36,6 +35,12 @@ class WebSocketHandler(WebSocket):
     @safe_callback
     def handleMessage(self):
         pass
+
+    @property
+    def _connection_info(self):
+        host, port = self.address[:2]
+        origin = get(self.request.headers, 'Origin')
+        return host, port, origin
 
 
 server = SimpleWebSocketServer(HOST, PORT, WebSocketHandler, selectInterval=0)
