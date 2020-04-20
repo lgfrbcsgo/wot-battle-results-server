@@ -14,6 +14,7 @@ class RunLoop:
     def stop(self):
         if self._callback_id is not None:
             BigWorld.cancelCallback(self._callback_id)
+        self._callback_id = None
 
     @safe_callback
     def _run(self):

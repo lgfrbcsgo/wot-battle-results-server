@@ -39,7 +39,7 @@ class WebSocketHandler(WebSocket):
 
 
 server = SimpleWebSocketServer(HOST, PORT, WebSocketHandler, selectInterval=0)
-run_loop = RunLoop(server.serveonce)
+server_run_loop = RunLoop(server.serveonce)
 
 
 @safe_callback
@@ -55,13 +55,13 @@ battle_results_fetcher.battleResultFetched += message_results
 
 
 def init():
-    run_loop.start()
+    server_run_loop.start()
     battle_results_fetcher.start()
     LOG_NOTE('Server listening on port %d' % PORT)
 
 
 def fini():
-    run_loop.stop()
+    server_run_loop.stop()
     server.close()
     battle_results_fetcher.stop()
     LOG_NOTE('Stopped server')
