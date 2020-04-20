@@ -57,7 +57,7 @@ battle_results_fetcher.battleResultFetched += message_results
 def init():
     run_loop.start()
     battle_results_fetcher.start()
-    LOG_NOTE('Started server')
+    LOG_NOTE('Server listening on port %d' % PORT)
 
 
 def fini():
