@@ -12,10 +12,10 @@ def get(dct, *path):
     for segment in path:
         if dct is None or segment not in dct:
             return None
+
         dct = dct[segment]
 
-    if dct is not None:
-        return dct
+    return dct
 
 
 def safe_callback(func):
