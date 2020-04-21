@@ -15,7 +15,7 @@ Every command and message is a JSON object which contains at least a `msgType` p
 
 
 -   Replays the battle results of the current session to the client.
-    `offset` can be used specify an offset when not all results have to be replayed.
+    `offset` can be used to specify an offset when not all results have to be replayed.
     An `offset` of `0` or omitting the `offset` will replay all battle results.
     ```json
     {
@@ -25,7 +25,7 @@ Every command and message is a JSON object which contains at least a `msgType` p
     ```
 
 -   Replays the battle results of the current session to the client and then subscribes it to the feed.
-    `offset` can be used specify an offset when not all results have to be replayed.
+    `offset` can be used to specify an offset when not all results have to be replayed.
     An `offset` of `0` or omitting the `offset` will replay all battle results.
     ```json
     {
