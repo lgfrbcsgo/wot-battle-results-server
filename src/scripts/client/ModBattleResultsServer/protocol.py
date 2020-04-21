@@ -30,7 +30,7 @@ class MetaMessageToken(object):
     pass
 
 
-class WebSocketProtocol(object):
+class Protocol(object):
     CONNECTED = MetaMessageToken()
     DISCONNECTED = MetaMessageToken()
 
@@ -49,10 +49,10 @@ class WebSocketProtocol(object):
         pass
 
     def dispatch_connected(self):
-        self.dispatch_message(WebSocketProtocol.CONNECTED)
+        self.dispatch_message(Protocol.CONNECTED)
 
     def dispatch_disconnected(self):
-        self.dispatch_message(WebSocketProtocol.DISCONNECTED)
+        self.dispatch_message(Protocol.DISCONNECTED)
 
     def dispatch_message(self, msg_type, **payload):
         if msg_type is None:
@@ -81,8 +81,8 @@ class WebSocketProtocol(object):
 
 
 def websocket(dispatcher_class):
-    if not issubclass(dispatcher_class, WebSocketProtocol):
-        raise TypeError('dispatcher_class must be a subclass of WebSocketMessageDispatcher')
+    if not issubclass(dispatcher_class, Protocol):
+        raise TypeError('dispatcher_class must be a subclass of Protocol')
 
     class DispatchingWebSocket(WebSocket):
         def __init__(self, server, sock, address):

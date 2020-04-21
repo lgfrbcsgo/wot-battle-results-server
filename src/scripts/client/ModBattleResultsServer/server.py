@@ -1,6 +1,6 @@
 from ModBattleResultsServer.fetcher import BattleResultsFetcher
 from ModBattleResultsServer.lib.SimpleWebSocketServer import SimpleWebSocketServer
-from ModBattleResultsServer.message_dispatcher import WebSocketProtocol, handler, websocket
+from ModBattleResultsServer.protocol import Protocol, handler, websocket
 from ModBattleResultsServer.run_loop import RunLoop
 from ModBattleResultsServer.util import safe_callback
 from debug_utils import LOG_NOTE
@@ -21,7 +21,7 @@ class MessageTypes(object):
 previous_results = []
 
 
-class BattleResultsServerProtocol(WebSocketProtocol):
+class BattleResultsServerProtocol(Protocol):
     def __init__(self, connection):
         super(BattleResultsServerProtocol, self).__init__(connection)
         self.subscribed_to_battle_results = False
@@ -29,11 +29,11 @@ class BattleResultsServerProtocol(WebSocketProtocol):
     def handle_message_not_dispatched(self, msg_type, **payload):
         self.send_message(MessageTypes.UNKNOWN_COMMAND, commandType=msg_type, payload=payload)
 
-    @handler(WebSocketProtocol.CONNECTED)
+    @handler(Protocol.CONNECTED)
     def on_connected(self, msg_type):
         LOG_NOTE('{host} connected on port {port} (Origin: {origin})'.format(**self.connection_info))
 
-    @handler(WebSocketProtocol.DISCONNECTED)
+    @handler(Protocol.DISCONNECTED)
     def on_disconnected(self, msg_type):
         LOG_NOTE('{host} disconnected from port {port} (Origin: {origin})'.format(**self.connection_info))
 
