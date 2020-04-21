@@ -20,17 +20,17 @@ def sanitize_battle_results(results):
 
     personal = get(results, 'personal')
     if personal is not None:
-        for player in personal.itervalues():
-            unset(player, 'damageEventList')
-            unset(player, 'xpReplay')
-            unset(player, 'creditsReplay')
-            unset(player, 'tmenXPReplay')
-            unset(player, 'goldReplay')
-            unset(player, 'crystalReplay')
-            unset(player, 'freeXPReplay')
-            unset(player, 'avatarDamageEventList')
+        for vehicle in personal.itervalues():
+            unset(vehicle, 'damageEventList')
+            unset(vehicle, 'xpReplay')
+            unset(vehicle, 'creditsReplay')
+            unset(vehicle, 'tmenXPReplay')
+            unset(vehicle, 'goldReplay')
+            unset(vehicle, 'crystalReplay')
+            unset(vehicle, 'freeXPReplay')
+            unset(vehicle, 'avatarDamageEventList')
 
-            ext_meta = get(player, 'ext', 'epicMetaGame')
+            ext_meta = get(vehicle, 'ext', 'epicMetaGame')
             if ext_meta is not None:
                 unset(ext_meta, 'flXPReplay')
 
