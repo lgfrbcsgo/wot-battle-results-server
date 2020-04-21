@@ -30,23 +30,23 @@ class BattleResultsServerProtocol(Protocol):
         self.send_message(MessageType.UNKNOWN_COMMAND, commandType=msg_type, payload=payload)
 
     @handler(Protocol.CONNECTED)
-    def on_connected(self, msg_type):
+    def on_connected(self, _, **__):
         LOG_NOTE('{host} connected on port {port} (Origin: {origin})'.format(**self.connection_info))
 
     @handler(Protocol.DISCONNECTED)
-    def on_disconnected(self, msg_type):
+    def on_disconnected(self, _, **__):
         LOG_NOTE('{host} disconnected from port {port} (Origin: {origin})'.format(**self.connection_info))
 
     @handler(MessageType.SUBSCRIBE_TO_BATTLE_RESULTS, MessageType.REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS)
-    def on_subscribe_to_battle_results(self, msg_type):
+    def on_subscribe_to_battle_results(self, _, **__):
         self.subscribed_to_battle_results = True
 
     @handler(MessageType.UNSUBSCRIBE_FROM_BATTLE_RESULTS, Protocol.DISCONNECTED)
-    def on_unsubscribe_from_battle_results(self, msg_type):
+    def on_unsubscribe_from_battle_results(self, _, **__):
         self.subscribed_to_battle_results = False
 
     @handler(MessageType.REPLAY_BATTLE_RESULTS, MessageType.REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS)
-    def on_replay_battle_results(self, msg_type, offset=None):
+    def on_replay_battle_results(self, _, offset=None, **__):
         if offset is None:
             replayed_results = previous_results
         elif isinstance(offset, (long, int)) and 0 <= offset < len(previous_results):
