@@ -1,7 +1,7 @@
 from debug_utils import LOG_CURRENT_EXCEPTION
 
 
-def init(*args, **kwargs):
+def init(*_, **__):
     try:
         from ModBattleResultsServer import init
         init()
@@ -9,7 +9,7 @@ def init(*args, **kwargs):
         LOG_CURRENT_EXCEPTION()
 
 
-def fini(*args, **kwargs):
+def fini(*_, **__):
     try:
         from ModBattleResultsServer import fini
         fini()

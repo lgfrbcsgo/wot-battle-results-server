@@ -31,16 +31,16 @@ class BattleResultsFetcher(object):
         chatManager.unsubscribeChatAction(self._on_personal_sys_message, CHAT_ACTIONS.personalSysMessage)
 
     @safe_callback
-    def _on_account_become_player(self):
+    def _on_account_become_player(self, *_, **__):
         self._account_is_player = True
         self._fetch_battle_results()
 
     @safe_callback
-    def _on_account_become_non_player(self):
+    def _on_account_become_non_player(self, *_, **__):
         self._account_is_player = False
 
     @safe_callback
-    def _on_personal_sys_message(self, chat_action, *args, **kwargs):
+    def _on_personal_sys_message(self, chat_action, *_, **__):
         message = ServiceChannelMessage.fromChatAction(chat_action, personal=True)
         if message.type == SYS_MESSAGE_TYPE.battleResults.index():
             arena_unique_id = get(message.data, 'arenaUniqueID')
