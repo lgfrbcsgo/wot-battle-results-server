@@ -77,7 +77,7 @@ class WebSocketProtocol(object):
     def connection_info(self):
         host, port = self.connection.address[:2]
         origin = get(self.connection.request.headers, 'Origin')
-        return host, port, origin
+        return dict(host=host, port=port, origin=origin)
 
 
 def websocket(dispatcher_class):

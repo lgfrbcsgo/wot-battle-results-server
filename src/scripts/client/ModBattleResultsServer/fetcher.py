@@ -46,7 +46,7 @@ class BattleResultsFetcher(object):
             arena_unique_id = get(message.data, 'arenaUniqueID')
             if arena_unique_id is not None:
                 self._queue.append(arena_unique_id)
-                LOG_NOTE('Queued battle result %d' % arena_unique_id)
+                LOG_NOTE('Queued battle result {}'.format(arena_unique_id))
                 if self._account_is_player:
                     self._fetch_battle_results()
 
@@ -60,14 +60,14 @@ class BattleResultsFetcher(object):
             while self._account_is_player and not self._stopped and len(self._queue) > 0:
                 arena_unique_id = self._queue.pop()
                 if arena_unique_id > 0:
-                    LOG_NOTE('Fetching battle result %d' % arena_unique_id)
+                    LOG_NOTE('Fetching battle result {}'.format(arena_unique_id))
                     results = yield BattleResultsGetter(arena_unique_id).request()
                     if results.success:
                         result = serialize_battle_results(results.auxData)
-                        LOG_NOTE('Fetched battle result %d' % arena_unique_id)
+                        LOG_NOTE('Fetched battle result {}'.format(arena_unique_id))
                         self.battleResultFetched(result)
                     else:
-                        LOG_NOTE('Failed fetching battle result %d' % arena_unique_id)
+                        LOG_NOTE('Failed fetching battle result {}'.format(arena_unique_id))
 
         finally:
             self._fetching = False

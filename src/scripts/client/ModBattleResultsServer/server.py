@@ -31,19 +31,11 @@ class BattleResultsServerProtocol(WebSocketProtocol):
 
     @handler(WebSocketProtocol.CONNECTED)
     def on_connected(self, msg_type):
-        host, port, origin = self.connection_info
-        if origin is not None:
-            LOG_NOTE('%s connected on port %d (Origin: %s)' % (host, port, origin))
-        else:
-            LOG_NOTE('%s connected on port %d' % (host, port))
+        LOG_NOTE('{host} connected on port {port} (Origin: {origin})'.format(**self.connection_info))
 
     @handler(WebSocketProtocol.DISCONNECTED)
     def on_disconnected(self, msg_type):
-        host, port, origin = self.connection_info
-        if origin is not None:
-            LOG_NOTE('%s disconnected from port %d (Origin: %s)' % (host, port, origin))
-        else:
-            LOG_NOTE('%s disconnected from port %d' % (host, port))
+        LOG_NOTE('{host} disconnected from port {port} (Origin: {origin})'.format(**self.connection_info))
 
     @handler(MessageTypes.SUBSCRIBE_TO_BATTLE_RESULTS, MessageTypes.REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS)
     def on_subscribe_to_battle_results(self, msg_type):
@@ -88,7 +80,7 @@ battle_results_fetcher.battleResultFetched += broadcast_battle_result
 def init():
     server_run_loop.start()
     battle_results_fetcher.start()
-    LOG_NOTE('Server listening on port %d' % PORT)
+    LOG_NOTE('Server listening on port {}'.format(PORT))
 
 
 def fini():
