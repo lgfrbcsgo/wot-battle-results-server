@@ -70,7 +70,7 @@ server_run_loop = RunLoop(server.serveonce)
 def broadcast_battle_result(battle_result):
     previous_results.append(battle_result)
     for client in server.connections.itervalues():
-        client.dispatcher.notify_battle_result(battle_result)
+        client.protocol.notify_battle_result(battle_result)
 
 
 battle_results_fetcher = BattleResultsFetcher()

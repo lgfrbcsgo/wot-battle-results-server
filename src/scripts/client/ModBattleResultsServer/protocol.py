@@ -80,25 +80,25 @@ class Protocol(object):
         return dict(host=host, port=port, origin=origin)
 
 
-def websocket(dispatcher_class):
-    if not issubclass(dispatcher_class, Protocol):
-        raise TypeError('dispatcher_class must be a subclass of Protocol')
+def websocket(protocol_class):
+    if not issubclass(protocol_class, Protocol):
+        raise TypeError('protocol_class must be a subclass of Protocol')
 
-    class DispatchingWebSocket(WebSocket):
+    class WebSocketProtocolAdapter(WebSocket):
         def __init__(self, server, sock, address):
-            super(DispatchingWebSocket, self).__init__(server, sock, address)
-            self.dispatcher = dispatcher_class(self)
+            super(WebSocketProtocolAdapter, self).__init__(server, sock, address)
+            self.protocol = protocol_class(self)
 
         @safe_callback
         def handleConnected(self):
-            self.dispatcher.dispatch_connected()
+            self.protocol.dispatch_connected()
 
         @safe_callback
         def handleClose(self):
-            self.dispatcher.dispatch_disconnected()
+            self.protocol.dispatch_disconnected()
 
         @safe_callback
         def handleMessage(self):
-            self.dispatcher.handle_data(self.data)
+            self.protocol.handle_data(self.data)
 
-    return DispatchingWebSocket
+    return WebSocketProtocolAdapter
