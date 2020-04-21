@@ -41,7 +41,7 @@ class BattleResultsServerProtocol(Protocol):
     def on_subscribe_to_battle_results(self, msg_type):
         self.subscribed_to_battle_results = True
 
-    @handler(MessageTypes.UNSUBSCRIBE_FROM_BATTLE_RESULTS)
+    @handler(MessageTypes.UNSUBSCRIBE_FROM_BATTLE_RESULTS, Protocol.DISCONNECTED)
     def on_unsubscribe_from_battle_results(self, msg_type):
         self.subscribed_to_battle_results = False
 
