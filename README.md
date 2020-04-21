@@ -1,5 +1,5 @@
 # WoT Battle Results Server
-WoT mod which starts a WebSocket server on `localhost:61942` for serving battle results.
+WoT mod which starts a WebSocket server on `ws://localhost:61942` for serving battle results.
 
 ## Protocol
 The sever uses a message protocol which is based on JSON. 
