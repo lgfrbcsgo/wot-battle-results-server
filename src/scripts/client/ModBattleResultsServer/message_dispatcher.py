@@ -9,12 +9,15 @@ MSG_TYPE = 'msgType'
 
 class Handler(object):
     def __init__(self, func, *msg_types):
-        self.msg_types = set(msg_types)
+        self._msg_types = msg_types
         self._func = func
         functools.update_wrapper(self, func)
 
     def __call__(self, *args, **kwargs):
         return self._func(*args, **kwargs)
+
+    def handles(self, msg_type):
+        return msg_type in self._msg_types
 
 
 def handler(*msg_types):
@@ -23,10 +26,13 @@ def handler(*msg_types):
     return decorator
 
 
+class MetaMessageToken(object):
+    pass
+
+
 class WebSocketProtocol(object):
-    CONNECTED = '[WebSocketMessageDispatcher] CONNECTED'
-    DISCONNECTED = '[WebSocketMessageDispatcher] DISCONNECTED'
-    _MESSAGES = (CONNECTED, DISCONNECTED)
+    CONNECTED = MetaMessageToken()
+    DISCONNECTED = MetaMessageToken()
 
     def __init__(self, connection):
         if not isinstance(connection, WebSocket):
@@ -39,7 +45,7 @@ class WebSocketProtocol(object):
         unset(msg, MSG_TYPE)
         self.dispatch_message(msg_type, **msg)
 
-    def message_not_dispatched(self, msg_type, payload):
+    def handle_message_not_dispatched(self, msg_type, **payload):
         pass
 
     def dispatch_connected(self):
@@ -55,12 +61,12 @@ class WebSocketProtocol(object):
         handled = False
         for attribute_name in dir(self):
             attribute = getattr(self, attribute_name)
-            if isinstance(attribute, Handler) and msg_type in attribute.msg_types:
+            if isinstance(attribute, Handler) and attribute.handles(msg_type):
                 attribute(self, msg_type, **payload)
                 handled = True
 
-        if not handled and msg_type not in WebSocketProtocol._MESSAGES:
-            self.message_not_dispatched(msg_type, **payload)
+        if not handled and not isinstance(msg_type, MetaMessageToken):
+            self.handle_message_not_dispatched(msg_type, **payload)
 
     def send_message(self, msg_type, **payload):
         payload[MSG_TYPE] = msg_type

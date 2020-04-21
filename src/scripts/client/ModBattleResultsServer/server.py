@@ -15,7 +15,7 @@ class MessageTypes(object):
     REPLAY_BATTLE_RESULTS = 'REPLAY_BATTLE_RESULTS'
     REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS = 'REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS'
     UNSUBSCRIBE_FROM_BATTLE_RESULTS = 'UNSUBSCRIBE_FROM_BATTLE_RESULTS'
-    UNKNOWN_MESSAGE = 'UNKNOWN_MESSAGE'
+    UNKNOWN_COMMAND = 'UNKNOWN_COMMAND'
 
 
 previous_results = []
@@ -26,8 +26,8 @@ class BattleResultsServerProtocol(WebSocketProtocol):
         super(BattleResultsServerProtocol, self).__init__(connection)
         self.subscribed_to_battle_results = False
 
-    def message_not_dispatched(self, _, msg):
-        self.send_message(MessageTypes.UNKNOWN_MESSAGE, message=msg)
+    def handle_message_not_dispatched(self, msg_type, **payload):
+        self.send_message(MessageTypes.UNKNOWN_COMMAND, commandType=msg_type, payload=payload)
 
     @handler(WebSocketProtocol.CONNECTED)
     def on_connected(self, msg_type):

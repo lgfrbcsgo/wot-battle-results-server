@@ -52,10 +52,12 @@ Every command and message is a JSON object which contains at least a `msgType` p
     ```
     
 -   Sent when a command from the client could not be recognised.
-    `message` is the original message.
+    `commandType` is the original message type.
+    `payload` will contain all additional fields of the original message.
     ```json
     {
-      "msgType": "UNKNOWN_MESSAGE",
-      "message": {}
+      "msgType": "UNKNOWN_COMMAND",
+      "commandType": "UNRECOGNISED_COMMAND",
+      "payload": {}
     }
     ```
