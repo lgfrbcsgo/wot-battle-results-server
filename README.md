@@ -6,7 +6,7 @@ The sever uses a message protocol which is based on JSON.
 Every command and message is a JSON object which contains at least a `msgType` property.
 
 ### Commands
--   Subscribes this client to feed of battle results.
+-   Subscribes this client to the feed of battle results.
     ```json
     {
       "msgType": "SUBSCRIBE_TO_BATTLE_RESULTS"
