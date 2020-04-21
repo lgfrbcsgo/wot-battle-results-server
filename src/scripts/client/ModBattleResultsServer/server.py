@@ -9,7 +9,7 @@ HOST = 'localhost'
 PORT = 61942
 
 
-class MessageTypes(object):
+class MessageType(object):
     BATTLE_RESULT = 'BATTLE_RESULT'
     SUBSCRIBE_TO_BATTLE_RESULTS = 'SUBSCRIBE_TO_BATTLE_RESULTS'
     REPLAY_BATTLE_RESULTS = 'REPLAY_BATTLE_RESULTS'
@@ -27,7 +27,7 @@ class BattleResultsServerProtocol(Protocol):
         self.subscribed_to_battle_results = False
 
     def handle_message_not_dispatched(self, msg_type, **payload):
-        self.send_message(MessageTypes.UNKNOWN_COMMAND, commandType=msg_type, payload=payload)
+        self.send_message(MessageType.UNKNOWN_COMMAND, commandType=msg_type, payload=payload)
 
     @handler(Protocol.CONNECTED)
     def on_connected(self, msg_type):
@@ -37,15 +37,15 @@ class BattleResultsServerProtocol(Protocol):
     def on_disconnected(self, msg_type):
         LOG_NOTE('{host} disconnected from port {port} (Origin: {origin})'.format(**self.connection_info))
 
-    @handler(MessageTypes.SUBSCRIBE_TO_BATTLE_RESULTS, MessageTypes.REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS)
+    @handler(MessageType.SUBSCRIBE_TO_BATTLE_RESULTS, MessageType.REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS)
     def on_subscribe_to_battle_results(self, msg_type):
         self.subscribed_to_battle_results = True
 
-    @handler(MessageTypes.UNSUBSCRIBE_FROM_BATTLE_RESULTS, Protocol.DISCONNECTED)
+    @handler(MessageType.UNSUBSCRIBE_FROM_BATTLE_RESULTS, Protocol.DISCONNECTED)
     def on_unsubscribe_from_battle_results(self, msg_type):
         self.subscribed_to_battle_results = False
 
-    @handler(MessageTypes.REPLAY_BATTLE_RESULTS, MessageTypes.REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS)
+    @handler(MessageType.REPLAY_BATTLE_RESULTS, MessageType.REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS)
     def on_replay_battle_results(self, msg_type, offset=None):
         if offset is None:
             replayed_results = previous_results
@@ -55,11 +55,11 @@ class BattleResultsServerProtocol(Protocol):
             return
 
         for battle_result in replayed_results:
-            self.send_message(MessageTypes.BATTLE_RESULT, battleResult=battle_result)
+            self.send_message(MessageType.BATTLE_RESULT, battleResult=battle_result)
 
     def notify_battle_result(self, battle_result):
         if self.subscribed_to_battle_results:
-            self.send_message(MessageTypes.BATTLE_RESULT, battleResult=battle_result)
+            self.send_message(MessageType.BATTLE_RESULT, battleResult=battle_result)
 
 
 server = SimpleWebSocketServer(HOST, PORT, websocket(BattleResultsServerProtocol), selectInterval=0)
