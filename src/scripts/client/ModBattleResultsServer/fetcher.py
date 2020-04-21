@@ -10,7 +10,7 @@ from gui.shared.gui_items.processors.common import BattleResultsGetter
 from messenger.proto.bw.wrappers import ServiceChannelMessage
 
 
-class BattleResultsFetcher:
+class BattleResultsFetcher(object):
     def __init__(self):
         self.battleResultFetched = Event()
         self._stopped = True

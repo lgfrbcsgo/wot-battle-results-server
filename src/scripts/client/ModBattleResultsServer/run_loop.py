@@ -3,7 +3,7 @@ import BigWorld
 from ModBattleResultsServer.util import safe_callback
 
 
-class RunLoop:
+class RunLoop(object):
     def __init__(self, callback):
         self._callback = callback
         self._callback_id = None
