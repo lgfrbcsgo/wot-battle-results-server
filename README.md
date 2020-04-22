@@ -66,7 +66,19 @@ Every command and message is a JSON object which contains at least a `msgType` p
       "battleResult": {}
     }
     ```
-    
+   
+-   Sent when the client first connects.
+    `commandTypes` lists all supported commands of the server.
+    ```json
+    {
+      "msgType": "COMMANDS",
+      "commandTypes": [
+        "SOME_COMMAND",
+        "SOME_OTHER_COMMAND" 
+      ]
+    }
+    ```
+   
 -   Sent when the client first connects or when the session changed.
     `sessionId` is the unique id of the current gaming session. The `sessionId` is the same for all connections.
     ```json

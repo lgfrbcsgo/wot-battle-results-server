@@ -2,7 +2,7 @@ from ModBattleResultsServer.fetcher import BattleResultsFetcher
 from ModBattleResultsServer.protocol import Protocol, handler, WebSocketServer
 from ModBattleResultsServer.run_loop import RunLoop
 from ModBattleResultsServer.gaming_session import GamingSession
-from ModBattleResultsServer.util import safe_callback
+from ModBattleResultsServer.util import safe_callback, get
 from debug_utils import LOG_NOTE
 
 HOST = 'localhost'
@@ -18,6 +18,7 @@ class CommandType(object):
 
 
 class MessageType(object):
+    COMMANDS = 'COMMANDS'
     SESSION_ID = 'SESSION_ID'
     BATTLE_RESULT = 'BATTLE_RESULT'
     UNKNOWN_COMMAND = 'UNKNOWN_COMMAND'
@@ -30,20 +31,15 @@ class BattleResultsServerProtocol(Protocol):
         self.subscribed_to_battle_results = False
 
     def handle_message_not_dispatched(self, msg_type, **__):
-        self.send_message(
-            MessageType.UNKNOWN_COMMAND,
-            commandType=msg_type
-        )
+        self._send_unknown_command_message(msg_type)
 
     def handle_invalid_message(self, data):
-        self.send_message(
-            MessageType.INVALID_COMMAND,
-            command=data
-        )
+        self._send_invalid_command_message(data)
 
     @handler(Protocol.CONNECTED)
     def on_connected(self, _, **__):
         LOG_NOTE('{host} connected on port {port} (Origin: {origin})'.format(**self.connection_info))
+        self._send_commands_message(list(self.handled_msg_types))
         self.notify_session_id()
 
     @handler(Protocol.DISCONNECTED)
@@ -74,14 +70,17 @@ class BattleResultsServerProtocol(Protocol):
         GamingSession.start_new()
 
     def notify_session_id(self):
-        self.send_message(
-            MessageType.SESSION_ID,
-            sessionId=GamingSession.current().id
-        )
+        self._send_session_id_message(GamingSession.current().id)
 
     def notify_battle_result(self, result):
         if self.subscribed_to_battle_results:
             self._send_battle_result_message(result)
+
+    @property
+    def connection_info(self):
+        host, port = self.connection.address[:2]
+        origin = get(self.connection.request.headers, 'Origin')
+        return dict(host=host, port=port, origin=origin)
 
     def _send_battle_result_message(self, result):
         self.send_message(
@@ -89,6 +88,30 @@ class BattleResultsServerProtocol(Protocol):
             index=result.index,
             battleResult=result.battle_result,
             sessionId=result.session_id,
+        )
+
+    def _send_session_id_message(self, session_id):
+        self.send_message(
+            MessageType.SESSION_ID,
+            sessionId=session_id
+        )
+
+    def _send_commands_message(self, command_types):
+        self.send_message(
+            MessageType.COMMANDS,
+            commandTypes=command_types
+        )
+
+    def _send_unknown_command_message(self, command_type):
+        self.send_message(
+            MessageType.UNKNOWN_COMMAND,
+            commandType=command_type
+        )
+
+    def _send_invalid_command_message(self, command):
+        self.send_message(
+            MessageType.INVALID_COMMAND,
+            command=command
         )
 
 

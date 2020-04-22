@@ -2,12 +2,12 @@ import functools
 import json
 
 from ModBattleResultsServer.lib.SimpleWebSocketServer import WebSocket, SimpleWebSocketServer
-from ModBattleResultsServer.util import get, safe_callback
+from ModBattleResultsServer.util import safe_callback
 
 
 class Handler(object):
     def __init__(self, func, *msg_types):
-        self._msg_types = msg_types
+        self.msg_types = msg_types
         self._func = safe_callback(func)
         functools.update_wrapper(self, self._func)
 
@@ -15,7 +15,7 @@ class Handler(object):
         return self._func(*args, **kwargs)
 
     def handles(self, msg_type):
-        return msg_type in self._msg_types
+        return msg_type in self.msg_types
 
 
 def handler(*msg_types):
@@ -60,10 +60,10 @@ class Protocol(object):
 
     def dispatch_message(self, msg_type, **payload):
         handled = False
-        for attribute_name in dir(self):
-            attribute = getattr(self, attribute_name)
-            if isinstance(attribute, Handler) and attribute.handles(msg_type):
-                attribute(self, msg_type, **payload)
+
+        for _handler in self._handlers():
+            if _handler.handles(msg_type):
+                _handler(self, msg_type, **payload)
                 handled = True
 
         if not handled and not isinstance(msg_type, MetaMessageToken):
@@ -75,10 +75,15 @@ class Protocol(object):
         self.connection.sendMessage(data)
 
     @property
-    def connection_info(self):
-        host, port = self.connection.address[:2]
-        origin = get(self.connection.request.headers, 'Origin')
-        return dict(host=host, port=port, origin=origin)
+    def handled_msg_types(self):
+        handled_msg_types = set()
+
+        for _handler in self._handlers():
+            for msg_type in _handler.msg_types:
+                if not isinstance(msg_type, MetaMessageToken):
+                    handled_msg_types.add(msg_type)
+
+        return handled_msg_types
 
     @staticmethod
     def _deconstruct_message(msgType=None, **payload):
@@ -87,6 +92,13 @@ class Protocol(object):
     @staticmethod
     def _construct_message(msg_type, payload):
         return dict(msgType=msg_type, **payload)
+
+    @classmethod
+    def _handlers(cls):
+        for attribute_name in dir(cls):
+            attribute = getattr(cls, attribute_name)
+            if isinstance(attribute, Handler):
+                yield attribute
 
 
 def websocket(protocol_class):
