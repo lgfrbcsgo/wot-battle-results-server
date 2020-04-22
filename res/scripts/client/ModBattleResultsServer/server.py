@@ -1,7 +1,7 @@
 from ModBattleResultsServer.fetcher import BattleResultsFetcher
 from ModBattleResultsServer.protocol import Protocol, handler, WebSocketServer
 from ModBattleResultsServer.run_loop import RunLoop
-from ModBattleResultsServer.session import Session
+from ModBattleResultsServer.gaming_session import GamingSession
 from ModBattleResultsServer.util import safe_callback
 from debug_utils import LOG_NOTE
 
@@ -9,12 +9,17 @@ HOST = 'localhost'
 PORT = 61942
 
 
-class MessageType(object):
-    BATTLE_RESULT = 'BATTLE_RESULT'
+class CommandType(object):
     SUBSCRIBE_TO_BATTLE_RESULTS = 'SUBSCRIBE_TO_BATTLE_RESULTS'
     REPLAY_BATTLE_RESULTS = 'REPLAY_BATTLE_RESULTS'
     REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS = 'REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS'
     UNSUBSCRIBE_FROM_BATTLE_RESULTS = 'UNSUBSCRIBE_FROM_BATTLE_RESULTS'
+    START_NEW_SESSION = 'START_NEW_SESSION'
+
+
+class MessageType(object):
+    SESSION_ID = 'SESSION_ID'
+    BATTLE_RESULT = 'BATTLE_RESULT'
     UNKNOWN_COMMAND = 'UNKNOWN_COMMAND'
     INVALID_COMMAND = 'INVALID_COMMAND'
 
@@ -39,29 +44,40 @@ class BattleResultsServerProtocol(Protocol):
     @handler(Protocol.CONNECTED)
     def on_connected(self, _, **__):
         LOG_NOTE('{host} connected on port {port} (Origin: {origin})'.format(**self.connection_info))
+        self.notify_session_id()
 
     @handler(Protocol.DISCONNECTED)
     def on_disconnected(self, _, **__):
         LOG_NOTE('{host} disconnected from port {port} (Origin: {origin})'.format(**self.connection_info))
 
-    @handler(MessageType.SUBSCRIBE_TO_BATTLE_RESULTS, MessageType.REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS)
+    @handler(CommandType.SUBSCRIBE_TO_BATTLE_RESULTS, CommandType.REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS)
     def on_subscribe_to_battle_results(self, _, **__):
         self.subscribed_to_battle_results = True
 
-    @handler(MessageType.UNSUBSCRIBE_FROM_BATTLE_RESULTS, Protocol.DISCONNECTED)
+    @handler(CommandType.UNSUBSCRIBE_FROM_BATTLE_RESULTS, Protocol.DISCONNECTED)
     def on_unsubscribe_from_battle_results(self, _, **__):
         self.subscribed_to_battle_results = False
 
-    @handler(MessageType.REPLAY_BATTLE_RESULTS, MessageType.REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS)
+    @handler(CommandType.REPLAY_BATTLE_RESULTS, CommandType.REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS)
     def on_replay_battle_results(self, _, offset=None, sessionId=None, **__):
         if offset is not None and not isinstance(offset, (long, int)):
             return
 
-        if sessionId is not None and not Session.current().id == sessionId:
+        if sessionId is not None and not GamingSession.current().id == sessionId:
             return
 
-        for result in Session.current().query_results(offset):
+        for result in GamingSession.current().query_results(offset):
             self._send_battle_result_message(result)
+
+    @handler(CommandType.START_NEW_SESSION)
+    def on_start_new_session(self, _, **__):
+        GamingSession.start_new()
+
+    def notify_session_id(self):
+        self.send_message(
+            MessageType.SESSION_ID,
+            sessionId=GamingSession.current().id
+        )
 
     def notify_battle_result(self, result):
         if self.subscribed_to_battle_results:
@@ -72,7 +88,7 @@ class BattleResultsServerProtocol(Protocol):
             MessageType.BATTLE_RESULT,
             index=result.index,
             battleResult=result.battle_result,
-            sessionId=Session.current().id,
+            sessionId=result.session_id,
         )
 
 
@@ -81,14 +97,23 @@ server_run_loop = RunLoop(server.serveonce)
 
 
 @safe_callback
-def broadcast_battle_result(battle_result):
-    result = Session.current().receive_battle_result(battle_result)
+def on_battle_result_fetched(battle_result):
+    result = GamingSession.current().receive_battle_result(battle_result)
     for protocol in server.protocols:
         protocol.notify_battle_result(result)
 
 
 battle_results_fetcher = BattleResultsFetcher()
-battle_results_fetcher.battleResultFetched += broadcast_battle_result
+battle_results_fetcher.battle_result_fetched += on_battle_result_fetched
+
+
+@safe_callback
+def on_started_new_session():
+    for protocol in server.protocols:
+        protocol.notify_session_id()
+
+
+GamingSession.started_new += on_started_new_session
 
 
 def init():

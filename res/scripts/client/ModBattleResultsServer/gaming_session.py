@@ -1,10 +1,13 @@
 from collections import namedtuple
 from uuid import uuid4
 
-Result = namedtuple('Result', ('index', 'battle_result'))
+from Event import Event
+
+Result = namedtuple('Result', ('index', 'battle_result', 'session_id'))
 
 
-class Session(object):
+class GamingSession(object):
+    started_new = Event()
     _current = None
 
     def __init__(self):
@@ -16,7 +19,7 @@ class Session(object):
         return self._id
 
     def receive_battle_result(self, battle_result):
-        result = Result(index=len(self._results), battle_result=battle_result)
+        result = Result(index=len(self._results), battle_result=battle_result, session_id=self.id)
         self._results.append(result)
         return result
 
@@ -33,5 +36,6 @@ class Session(object):
         return cls._current
 
     @classmethod
-    def reset(cls):
+    def start_new(cls):
         cls._current = None
+        cls.started_new()

@@ -12,7 +12,7 @@ from messenger.proto.bw.wrappers import ServiceChannelMessage
 
 class BattleResultsFetcher(object):
     def __init__(self):
-        self.battleResultFetched = Event()
+        self.battle_result_fetched = Event()
         self._stopped = True
         self._account_is_player = False
         self._fetching = False
@@ -65,7 +65,7 @@ class BattleResultsFetcher(object):
                     if results.success:
                         result = serialize_battle_results(results.auxData)
                         LOG_NOTE('Fetched battle result {}'.format(arena_unique_id))
-                        self.battleResultFetched(result)
+                        self.battle_result_fetched(result)
                     else:
                         LOG_NOTE('Failed fetching battle result {}'.format(arena_unique_id))
 
