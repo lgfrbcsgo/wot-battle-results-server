@@ -1,6 +1,5 @@
 from ModBattleResultsServer.gaming_session import GamingSession
 from ModBattleResultsServer.protocol import Protocol, handler
-from debug_utils import LOG_NOTE
 
 
 class CommandType(object):
@@ -32,13 +31,8 @@ class BattleResultsProtocol(Protocol):
 
     @handler(Protocol.CONNECTED)
     def on_connected(self, **_):
-        LOG_NOTE('{host} connected on port {port} (Origin: {origin})'.format(**self.connection_info))
         self._send_commands_message(list(self.handled_msg_types))
         self.notify_session_id()
-
-    @handler(Protocol.DISCONNECTED)
-    def on_disconnected(self, **_):
-        LOG_NOTE('{host} disconnected from port {port} (Origin: {origin})'.format(**self.connection_info))
 
     @handler(CommandType.SUBSCRIBE_TO_BATTLE_RESULTS, CommandType.REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS)
     def on_subscribe_to_battle_results(self, **_):
@@ -69,10 +63,6 @@ class BattleResultsProtocol(Protocol):
     def notify_battle_result(self, result):
         if self.subscribed_to_battle_results:
             self._send_battle_result_message(result)
-
-    @property
-    def connection_info(self):
-        return dict(host=self.transport.host, port=self.transport.port, origin=self.transport.origin)
 
     def _send_battle_result_message(self, result):
         self.send_message(

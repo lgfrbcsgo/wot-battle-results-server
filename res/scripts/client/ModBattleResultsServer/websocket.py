@@ -5,6 +5,7 @@ from ModBattleResultsServer.lib.SimpleWebSocketServer import WebSocket, SimpleWe
 from ModBattleResultsServer.protocol import Protocol
 from ModBattleResultsServer.transport import Transport
 from ModBattleResultsServer.util import safe_callback, get
+from debug_utils import LOG_NOTE
 
 
 class WebSocketProtocolAdapter(WebSocket, Transport):
@@ -17,10 +18,12 @@ class WebSocketProtocolAdapter(WebSocket, Transport):
 
     @safe_callback
     def handleConnected(self):
+        LOG_NOTE('{host} connected on port {port} (Origin: {origin})'.format(**self.connection_info))
         self.protocol.dispatch_connected()
 
     @safe_callback
     def handleClose(self):
+        LOG_NOTE('{host} disconnected from port {port} (Origin: {origin})'.format(**self.connection_info))
         self.protocol.dispatch_disconnected()
 
     @safe_callback
@@ -31,16 +34,11 @@ class WebSocketProtocolAdapter(WebSocket, Transport):
         self.sendMessage(data)
 
     @property
-    def host(self):
-        return self.address[0]
-
     @property
-    def port(self):
-        return self.address[1]
-
-    @property
-    def origin(self):
-        return get(self.request.headers, 'Origin')
+    def connection_info(self):
+        host, port = self.address[:2]
+        origin = get(self.request.headers, 'Origin')
+        return dict(host=host, port=port, origin=origin)
 
 
 P = TypeVar('P', bound=Protocol)
