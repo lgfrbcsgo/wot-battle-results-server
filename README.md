@@ -68,7 +68,7 @@ Every command and message is a JSON object which contains at least a `msgType` p
     ```
     
 -   Sent when the client first connects or when the session changed.
-    `sessionId` is a unique id of the current gaming session. The `sessionId` is the same for all connections.
+    `sessionId` is the unique id of the current gaming session. The `sessionId` is the same for all connections.
     ```json
     {
       "msgType": "SESSION_ID",
