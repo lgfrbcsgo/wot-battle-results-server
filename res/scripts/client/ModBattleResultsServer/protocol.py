@@ -46,7 +46,7 @@ class Protocol(object):
         else:
             self.dispatch_message(msg_type, **payload)
 
-    def handle_message_not_dispatched(self, msg_type, **payload):
+    def handle_message_not_dispatched(self, msg_type):
         pass
 
     def handle_invalid_message(self, data):
@@ -63,11 +63,11 @@ class Protocol(object):
 
         for _handler in self._handlers():
             if _handler.handles(msg_type):
-                _handler(self, msg_type, **payload)
+                _handler(self, **payload)
                 handled = True
 
         if not handled and not isinstance(msg_type, MetaMessageToken):
-            self.handle_message_not_dispatched(msg_type, **payload)
+            self.handle_message_not_dispatched(msg_type)
 
     def send_message(self, msg_type, **payload):
         msg = self._construct_message(msg_type, payload)

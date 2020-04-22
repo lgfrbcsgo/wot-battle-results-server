@@ -30,32 +30,32 @@ class BattleResultsServerProtocol(Protocol):
         super(BattleResultsServerProtocol, self).__init__(connection)
         self.subscribed_to_battle_results = False
 
-    def handle_message_not_dispatched(self, msg_type, **__):
+    def handle_message_not_dispatched(self, msg_type):
         self._send_unknown_command_message(msg_type)
 
     def handle_invalid_message(self, data):
         self._send_invalid_command_message(data)
 
     @handler(Protocol.CONNECTED)
-    def on_connected(self, _, **__):
+    def on_connected(self, **_):
         LOG_NOTE('{host} connected on port {port} (Origin: {origin})'.format(**self.connection_info))
         self._send_commands_message(list(self.handled_msg_types))
         self.notify_session_id()
 
     @handler(Protocol.DISCONNECTED)
-    def on_disconnected(self, _, **__):
+    def on_disconnected(self, **_):
         LOG_NOTE('{host} disconnected from port {port} (Origin: {origin})'.format(**self.connection_info))
 
     @handler(CommandType.SUBSCRIBE_TO_BATTLE_RESULTS, CommandType.REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS)
-    def on_subscribe_to_battle_results(self, _, **__):
+    def on_subscribe_to_battle_results(self, **_):
         self.subscribed_to_battle_results = True
 
     @handler(CommandType.UNSUBSCRIBE_FROM_BATTLE_RESULTS, Protocol.DISCONNECTED)
-    def on_unsubscribe_from_battle_results(self, _, **__):
+    def on_unsubscribe_from_battle_results(self, **_):
         self.subscribed_to_battle_results = False
 
     @handler(CommandType.REPLAY_BATTLE_RESULTS, CommandType.REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS)
-    def on_replay_battle_results(self, _, offset=None, sessionId=None, **__):
+    def on_replay_battle_results(self, offset=None, sessionId=None, **_):
         if offset is not None and not isinstance(offset, (long, int)):
             return
 
@@ -66,7 +66,7 @@ class BattleResultsServerProtocol(Protocol):
             self._send_battle_result_message(result)
 
     @handler(CommandType.START_NEW_SESSION)
-    def on_start_new_session(self, _, **__):
+    def on_start_new_session(self, **_):
         GamingSession.start_new()
 
     def notify_session_id(self):
