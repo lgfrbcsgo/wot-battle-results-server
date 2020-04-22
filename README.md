@@ -14,7 +14,7 @@ Every command and message is a JSON object which contains at least a `msgType` p
     ```
 
 
--   Replays the battle results of the current session to the client.
+-   Replays the battle results of the current WoT session to the client.
     `offset` can be used to specify an offset when not all results have to be replayed.
     An `offset` of `0` or omitting the `offset` will replay all battle results.
     ```json
@@ -24,7 +24,7 @@ Every command and message is a JSON object which contains at least a `msgType` p
     }
     ```
 
--   Replays the battle results of the current session to the client and then subscribes it to the feed.
+-   Replays the battle results of the current WoT session to the client and then subscribes it to the feed.
     `offset` can be used to specify an offset when not all results have to be replayed.
     An `offset` of `0` or omitting the `offset` will replay all battle results.
     ```json
@@ -43,10 +43,14 @@ Every command and message is a JSON object which contains at least a `msgType` p
 
 ### Messages
 -   Sent when replaying a battle result or when a new battle result must be pushed to the client.
+    `sessionId` is a unique id of the current WoT session. The `sessionId` is the same for all connections.
+    `index` is the index of this `battleResult` within the current WoT session. 
     `battleResult` has the same format as the JSON fields found at the start of a .wotreplay file.
     ```json
     {
       "msgType": "BATTLE_RESULT",
+      "sessionId": "88bd6588-b124-4890-83c8-5862ff171795",
+      "index": 1,
       "battleResult": {}
     }
     ```

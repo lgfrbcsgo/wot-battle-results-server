@@ -1,8 +1,11 @@
+from collections import namedtuple
+
 from ModBattleResultsServer.fetcher import BattleResultsFetcher
 from ModBattleResultsServer.protocol import Protocol, handler, WebSocketServer
 from ModBattleResultsServer.run_loop import RunLoop
 from ModBattleResultsServer.util import safe_callback
 from debug_utils import LOG_NOTE
+from uuid import uuid4
 
 HOST = 'localhost'
 PORT = 61942
@@ -18,7 +21,9 @@ class MessageType(object):
     INVALID_COMMAND = 'INVALID_COMMAND'
 
 
+session_id = str(uuid4())
 previous_results = []
+Result = namedtuple('Result', ('index', 'battle_result'))
 
 
 class BattleResultsServerProtocol(Protocol):
@@ -27,10 +32,16 @@ class BattleResultsServerProtocol(Protocol):
         self.subscribed_to_battle_results = False
 
     def handle_message_not_dispatched(self, msg_type, **__):
-        self.send_message(MessageType.UNKNOWN_COMMAND, commandType=msg_type)
+        self.send_message(
+            MessageType.UNKNOWN_COMMAND,
+            commandType=msg_type
+        )
 
     def handle_invalid_message(self, data):
-        self.send_message(MessageType.INVALID_COMMAND, command=data)
+        self.send_message(
+            MessageType.INVALID_COMMAND,
+            command=data
+        )
 
     @handler(Protocol.CONNECTED)
     def on_connected(self, _, **__):
@@ -57,12 +68,20 @@ class BattleResultsServerProtocol(Protocol):
         else:
             return
 
-        for battle_result in replayed_results:
-            self.send_message(MessageType.BATTLE_RESULT, battleResult=battle_result)
+        for result in replayed_results:
+            self._send_battle_result_message(result)
 
-    def notify_battle_result(self, battle_result):
+    def notify_battle_result(self, result):
         if self.subscribed_to_battle_results:
-            self.send_message(MessageType.BATTLE_RESULT, battleResult=battle_result)
+            self._send_battle_result_message(result)
+
+    def _send_battle_result_message(self, result):
+        self.send_message(
+            MessageType.BATTLE_RESULT,
+            index=result.index,
+            battleResult=result.battle_result,
+            sessionId=session_id,
+        )
 
 
 server = WebSocketServer(HOST, PORT, BattleResultsServerProtocol)
@@ -71,9 +90,10 @@ server_run_loop = RunLoop(server.serveonce)
 
 @safe_callback
 def broadcast_battle_result(battle_result):
-    previous_results.append(battle_result)
+    result = Result(index=len(previous_results), battle_result=battle_result)
+    previous_results.append(result)
     for protocol in server.protocols:
-        protocol.notify_battle_result(battle_result)
+        protocol.notify_battle_result(result)
 
 
 battle_results_fetcher = BattleResultsFetcher()
