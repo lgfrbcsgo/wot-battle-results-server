@@ -88,6 +88,15 @@ Every command and message is a JSON object which contains at least a `msgType` p
     }
     ```
     
+-   Sent when the expected session id does not match the id of the current gaming session.
+    ```json
+    {
+      "msgType": "SESSION_ID_MISMATCH",
+      "expectedSessionId": "91e2e9a8-547e-4688-8b8d-fbdc1483a8b1",
+      "currentSessionId": "88bd6588-b124-4890-83c8-5862ff171795"
+    }
+    ```
+    
 -   Sent when a command from the client could not be recognised.
     `commandType` is the original message type.
     ```json

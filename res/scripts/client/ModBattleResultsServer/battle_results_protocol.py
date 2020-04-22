@@ -13,6 +13,7 @@ class CommandType(object):
 class MessageType(object):
     COMMANDS = 'COMMANDS'
     SESSION_ID = 'SESSION_ID'
+    SESSION_ID_MISMATCH = 'SESSION_ID_MISMATCH'
     BATTLE_RESULT = 'BATTLE_RESULT'
     UNKNOWN_COMMAND = 'UNKNOWN_COMMAND'
     INVALID_COMMAND = 'INVALID_COMMAND'
@@ -44,10 +45,14 @@ class BattleResultsProtocol(Protocol):
 
     @handler(CommandType.REPLAY_BATTLE_RESULTS, CommandType.REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS)
     def on_replay_battle_results(self, offset=None, sessionId=None, **_):
-        if offset is not None and not isinstance(offset, (long, int)):
+        if offset is None:
+            offset = 0
+
+        if not isinstance(offset, (long, int)):
             return
 
-        if sessionId is not None and not GamingSession.current().id == sessionId:
+        if sessionId is not None and GamingSession.current().id != sessionId:
+            self._send_session_id_mismatch_message(sessionId, GamingSession.current().id)
             return
 
         for result in GamingSession.current().query_results(offset):
@@ -76,6 +81,13 @@ class BattleResultsProtocol(Protocol):
         self.send_message(
             MessageType.SESSION_ID,
             sessionId=session_id
+        )
+
+    def _send_session_id_mismatch_message(self, expected_session_id, current_session_id):
+        self.send_message(
+            MessageType.SESSION_ID_MISMATCH,
+            expectedSessionId=expected_session_id,
+            currentSessionId=current_session_id
         )
 
     def _send_commands_message(self, command_types):

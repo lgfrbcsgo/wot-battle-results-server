@@ -23,7 +23,7 @@ class GamingSession(object):
         self._results.append(result)
         return result
 
-    def query_results(self, offset=0):
+    def query_results(self, offset):
         if 0 <= offset < len(self._results):
             return self._results[offset:]
         else:
