@@ -19,9 +19,9 @@ class MessageType(object):
     INVALID_COMMAND = 'INVALID_COMMAND'
 
 
-class BattleResultsServerProtocol(Protocol):
+class BattleResultsProtocol(Protocol):
     def __init__(self, transport):
-        super(BattleResultsServerProtocol, self).__init__(transport)
+        super(BattleResultsProtocol, self).__init__(transport)
         self.subscribed_to_battle_results = False
 
     def handle_message_not_dispatched(self, msg_type):

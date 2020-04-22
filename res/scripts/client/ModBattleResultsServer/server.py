@@ -1,4 +1,4 @@
-from ModBattleResultsServer.battle_results_server_protocol import BattleResultsServerProtocol
+from ModBattleResultsServer.battle_results_protocol import BattleResultsProtocol
 from ModBattleResultsServer.fetcher import BattleResultsFetcher
 from ModBattleResultsServer.websocket import WebSocketServer
 from ModBattleResultsServer.run_loop import RunLoop
@@ -9,7 +9,7 @@ from debug_utils import LOG_NOTE
 HOST = 'localhost'
 PORT = 61942
 
-server = WebSocketServer(HOST, PORT, BattleResultsServerProtocol)
+server = WebSocketServer(HOST, PORT, BattleResultsProtocol)
 server_run_loop = RunLoop(server.serveonce)
 
 
