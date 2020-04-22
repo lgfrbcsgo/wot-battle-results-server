@@ -1,17 +1,15 @@
 import functools
 import json
 
-from ModBattleResultsServer.lib.SimpleWebSocketServer import WebSocket
-from ModBattleResultsServer.util import get, safe_callback, unset
-
-MSG_TYPE = 'msgType'
+from ModBattleResultsServer.lib.SimpleWebSocketServer import WebSocket, SimpleWebSocketServer
+from ModBattleResultsServer.util import get, safe_callback
 
 
 class Handler(object):
     def __init__(self, func, *msg_types):
         self._msg_types = msg_types
-        self._func = func
-        functools.update_wrapper(self, func)
+        self._func = safe_callback(func)
+        functools.update_wrapper(self, self._func)
 
     def __call__(self, *args, **kwargs):
         return self._func(*args, **kwargs)
@@ -40,12 +38,18 @@ class Protocol(object):
         self.connection = connection
 
     def handle_data(self, data):
-        msg = json.loads(data)
-        msg_type = get(msg, MSG_TYPE)
-        unset(msg, MSG_TYPE)
-        self.dispatch_message(msg_type, **msg)
+        try:
+            msg = json.loads(data)
+            msg_type, payload = self._deconstruct_message(**msg)
+        except (TypeError, ValueError):
+            self.handle_invalid_message(data)
+        else:
+            self.dispatch_message(msg_type, **payload)
 
     def handle_message_not_dispatched(self, msg_type, **payload):
+        pass
+
+    def handle_invalid_message(self, data):
         pass
 
     def dispatch_connected(self):
@@ -55,9 +59,6 @@ class Protocol(object):
         self.dispatch_message(Protocol.DISCONNECTED)
 
     def dispatch_message(self, msg_type, **payload):
-        if msg_type is None:
-            return
-
         handled = False
         for attribute_name in dir(self):
             attribute = getattr(self, attribute_name)
@@ -69,8 +70,8 @@ class Protocol(object):
             self.handle_message_not_dispatched(msg_type, **payload)
 
     def send_message(self, msg_type, **payload):
-        payload[MSG_TYPE] = msg_type
-        data = json.dumps(payload)
+        msg = self._construct_message(msg_type, payload)
+        data = json.dumps(msg)
         self.connection.sendMessage(data)
 
     @property
@@ -78,6 +79,14 @@ class Protocol(object):
         host, port = self.connection.address[:2]
         origin = get(self.connection.request.headers, 'Origin')
         return dict(host=host, port=port, origin=origin)
+
+    @staticmethod
+    def _deconstruct_message(msgType=None, **payload):
+        return msgType, payload
+
+    @staticmethod
+    def _construct_message(msg_type, payload):
+        return dict(msgType=msg_type, **payload)
 
 
 def websocket(protocol_class):
@@ -102,3 +111,13 @@ def websocket(protocol_class):
             self.protocol.handle_data(self.data)
 
     return WebSocketProtocolAdapter
+
+
+class WebSocketServer(SimpleWebSocketServer):
+    def __init__(self, host, port, protocol_class):
+        super(WebSocketServer, self).__init__(host, port, websocket(protocol_class), selectInterval=0)
+
+    @property
+    def protocols(self):
+        for client in self.connections.itervalues():
+            yield client.protocol
