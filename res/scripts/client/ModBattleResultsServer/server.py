@@ -1,11 +1,9 @@
-from collections import namedtuple
-
 from ModBattleResultsServer.fetcher import BattleResultsFetcher
 from ModBattleResultsServer.protocol import Protocol, handler, WebSocketServer
 from ModBattleResultsServer.run_loop import RunLoop
+from ModBattleResultsServer.session import Session
 from ModBattleResultsServer.util import safe_callback
 from debug_utils import LOG_NOTE
-from uuid import uuid4
 
 HOST = 'localhost'
 PORT = 61942
@@ -19,11 +17,6 @@ class MessageType(object):
     UNSUBSCRIBE_FROM_BATTLE_RESULTS = 'UNSUBSCRIBE_FROM_BATTLE_RESULTS'
     UNKNOWN_COMMAND = 'UNKNOWN_COMMAND'
     INVALID_COMMAND = 'INVALID_COMMAND'
-
-
-session_id = str(uuid4())
-previous_results = []
-Result = namedtuple('Result', ('index', 'battle_result'))
 
 
 class BattleResultsServerProtocol(Protocol):
@@ -60,15 +53,14 @@ class BattleResultsServerProtocol(Protocol):
         self.subscribed_to_battle_results = False
 
     @handler(MessageType.REPLAY_BATTLE_RESULTS, MessageType.REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS)
-    def on_replay_battle_results(self, _, offset=None, **__):
-        if offset is None:
-            replayed_results = previous_results
-        elif isinstance(offset, (long, int)) and 0 <= offset < len(previous_results):
-            replayed_results = previous_results[offset:]
-        else:
+    def on_replay_battle_results(self, _, offset=None, sessionId=None, **__):
+        if offset is not None and not isinstance(offset, (long, int)):
             return
 
-        for result in replayed_results:
+        if sessionId is not None and not Session.current().id == sessionId:
+            return
+
+        for result in Session.current().query_results(offset):
             self._send_battle_result_message(result)
 
     def notify_battle_result(self, result):
@@ -80,7 +72,7 @@ class BattleResultsServerProtocol(Protocol):
             MessageType.BATTLE_RESULT,
             index=result.index,
             battleResult=result.battle_result,
-            sessionId=session_id,
+            sessionId=Session.current().id,
         )
 
 
@@ -90,8 +82,7 @@ server_run_loop = RunLoop(server.serveonce)
 
 @safe_callback
 def broadcast_battle_result(battle_result):
-    result = Result(index=len(previous_results), battle_result=battle_result)
-    previous_results.append(result)
+    result = Session.current().receive_battle_result(battle_result)
     for protocol in server.protocols:
         protocol.notify_battle_result(result)
 
