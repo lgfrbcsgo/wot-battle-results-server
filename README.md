@@ -64,7 +64,7 @@ Every command and message is a JSON object which contains at least a `msgType` p
     `command` is the original message.
     ```json
     {
-      "msgType": "UNKNOWN_COMMAND",
+      "msgType": "INVALID_COMMAND",
       "command": "{\"msgType\": \"COMMAND\", "
     }
     ```
