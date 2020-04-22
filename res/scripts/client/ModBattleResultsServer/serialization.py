@@ -27,6 +27,7 @@ def sanitize_battle_results(results):
             unset(vehicle, 'tmenXPReplay')
             unset(vehicle, 'goldReplay')
             unset(vehicle, 'crystalReplay')
+            unset(vehicle, 'eventCoinReplay')
             unset(vehicle, 'freeXPReplay')
             unset(vehicle, 'avatarDamageEventList')
 
