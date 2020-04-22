@@ -34,7 +34,6 @@ class WebSocketProtocolAdapter(WebSocket, Transport):
         self.sendMessage(data)
 
     @property
-    @property
     def connection_info(self):
         host, port = self.address[:2]
         origin = get(self.request.headers, 'Origin')
