@@ -1,7 +1,7 @@
-import functools
 import json
+from functools import update_wrapper
 
-from ModBattleResultsServer.lib.SimpleWebSocketServer import WebSocket, SimpleWebSocketServer
+from ModBattleResultsServer.transport import Transport
 from ModBattleResultsServer.util import safe_callback
 
 
@@ -9,7 +9,7 @@ class Handler(object):
     def __init__(self, func, *msg_types):
         self.msg_types = msg_types
         self._func = safe_callback(func)
-        functools.update_wrapper(self, self._func)
+        update_wrapper(self, self._func)
 
     def __call__(self, *args, **kwargs):
         return self._func(*args, **kwargs)
@@ -32,10 +32,10 @@ class Protocol(object):
     CONNECTED = MetaMessageToken()
     DISCONNECTED = MetaMessageToken()
 
-    def __init__(self, connection):
-        if not isinstance(connection, WebSocket):
-            raise TypeError('connection must be an instance of SimpleWebSocketServer.WebSocket')
-        self.connection = connection
+    def __init__(self, transport):
+        if not isinstance(transport, Transport):
+            raise TypeError('transport must be an instance of Transport')
+        self.transport = transport
 
     def handle_data(self, data):
         try:
@@ -72,7 +72,7 @@ class Protocol(object):
     def send_message(self, msg_type, **payload):
         msg = self._construct_message(msg_type, payload)
         data = json.dumps(msg)
-        self.connection.sendMessage(data)
+        self.transport.send_message(data)
 
     @property
     def handled_msg_types(self):
@@ -99,37 +99,3 @@ class Protocol(object):
             attribute = getattr(cls, attribute_name)
             if isinstance(attribute, Handler):
                 yield attribute
-
-
-def websocket(protocol_class):
-    if not issubclass(protocol_class, Protocol):
-        raise TypeError('protocol_class must be a subclass of Protocol')
-
-    class WebSocketProtocolAdapter(WebSocket):
-        def __init__(self, server, sock, address):
-            super(WebSocketProtocolAdapter, self).__init__(server, sock, address)
-            self.protocol = protocol_class(self)
-
-        @safe_callback
-        def handleConnected(self):
-            self.protocol.dispatch_connected()
-
-        @safe_callback
-        def handleClose(self):
-            self.protocol.dispatch_disconnected()
-
-        @safe_callback
-        def handleMessage(self):
-            self.protocol.handle_data(self.data)
-
-    return WebSocketProtocolAdapter
-
-
-class WebSocketServer(SimpleWebSocketServer):
-    def __init__(self, host, port, protocol_class):
-        super(WebSocketServer, self).__init__(host, port, websocket(protocol_class), selectInterval=0)
-
-    @property
-    def protocols(self):
-        for client in self.connections.itervalues():
-            yield client.protocol
