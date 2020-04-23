@@ -1,3 +1,5 @@
+from typing import Callable
+
 import BigWorld
 
 from ModBattleResultsServer.util import safe_callback
@@ -5,6 +7,7 @@ from ModBattleResultsServer.util import safe_callback
 
 class RunLoop(object):
     def __init__(self, callback):
+        # type: (Callable[[], None]) -> None
         self._callback = callback
         self._callback_id = None
 

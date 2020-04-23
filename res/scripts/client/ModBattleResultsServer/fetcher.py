@@ -1,8 +1,8 @@
 import time
-from collections import namedtuple
 
 from ChatManager import chatManager
 from Event import Event
+from ModBattleResultsServer.batte_result import BattleResult
 from ModBattleResultsServer.serialization import serialize_battle_results
 from ModBattleResultsServer.util import safe_callback, get
 from PlayerEvents import g_playerEvents
@@ -11,9 +11,6 @@ from chat_shared import CHAT_ACTIONS, SYS_MESSAGE_TYPE
 from debug_utils import LOG_NOTE
 from gui.shared.gui_items.processors.common import BattleResultsGetter
 from messenger.proto.bw.wrappers import ServiceChannelMessage
-
-
-BattleResult = namedtuple('BattleResult', ('timestamp', 'result'))
 
 
 class BattleResultsFetcher(object):
@@ -67,14 +64,12 @@ class BattleResultsFetcher(object):
                 arena_unique_id = self._queue.pop()
                 if arena_unique_id > 0:
                     LOG_NOTE('Fetching battle result {}'.format(arena_unique_id))
-                    result = yield BattleResultsGetter(arena_unique_id).request()
-                    if result.success:
-                        battle_result = serialize_battle_results(result.auxData)
+                    response = yield BattleResultsGetter(arena_unique_id).request()
+                    if response.success:
                         LOG_NOTE('Fetched battle result {}'.format(arena_unique_id))
-                        self.battle_result_fetched(BattleResult(
-                            timestamp=int(time.time()),
-                            result=battle_result,
-                        ))
+                        result = serialize_battle_results(response.auxData)
+                        battle_result = BattleResult(received_at=time.time(), result=result)
+                        self.battle_result_fetched(battle_result)
                     else:
                         LOG_NOTE('Failed fetching battle result {}'.format(arena_unique_id))
 

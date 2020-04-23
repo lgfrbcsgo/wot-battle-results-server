@@ -19,7 +19,7 @@ Every command and message is a JSON object which contains at least a `messageTyp
     ```json
     {
       "messageType": "REPLAY",
-      "after": 1587657932
+      "after": 1587657932.152
     }
     ```
 
@@ -39,7 +39,7 @@ Every command and message is a JSON object which contains at least a `messageTyp
       "commands": [
         {
           "messageType": "REPLAY",
-          "after": 42
+          "after": 1587657932.152
         },
         {
           "messageType": "SUBSCRIBE"
@@ -56,8 +56,8 @@ Every command and message is a JSON object which contains at least a `messageTyp
     ```json
     {
       "messageType": "BATTLE_RESULT",
-      "timestamp": "1587657932",
-      "battleResult": {}
+      "receivedAt": "1587657932.152",
+      "result": {}
     }
     ```
    
@@ -65,8 +65,8 @@ Every command and message is a JSON object which contains at least a `messageTyp
     `commandTypes` lists all supported commands of the server.
     ```json
     {
-      "messageType": "COMMANDS",
-      "commandTypes": [
+      "messageType": "PROTOCOL_VERSION",
+      "commands": [
         "SOME_COMMAND",
         "SOME_OTHER_COMMAND" 
       ]
@@ -77,8 +77,8 @@ Every command and message is a JSON object which contains at least a `messageTyp
     ```json
     {
       "messageType": "ERROR",
-      "errorType": "UNKNOWN_COMMAND",
-      "errorMessage": "Command UNRECOGNISED_COMMAND is unknown."
+      "type": "UNKNOWN_COMMAND",
+      "message": "Command UNRECOGNISED_COMMAND is unknown."
     }
     ```
  
