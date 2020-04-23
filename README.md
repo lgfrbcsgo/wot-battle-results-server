@@ -56,7 +56,7 @@ Every command and message is a JSON object which contains at least a `messageTyp
     ```json
     {
       "messageType": "BATTLE_RESULT",
-      "recordedAt": "1587657932.152",
+      "recordedAt": 1587657932.152,
       "result": {}
     }
     ```
