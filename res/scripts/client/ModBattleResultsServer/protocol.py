@@ -1,7 +1,7 @@
 import json
 from collections import namedtuple
 from functools import update_wrapper
-from typing import Any, Mapping, Set, Callable, Union, Generator
+from typing import Any, Mapping, Set, Callable, Union, Generator, Tuple
 
 from ModBattleResultsServer.transport import Transport
 from ModBattleResultsServer.util import safe_callback
@@ -106,6 +106,9 @@ class Protocol(object):
 
     @staticmethod
     def _deconstruct_message(messageType=None, **payload):
+        # type: (Any, Any) -> Tuple[Union[str, MetaMessageType], Mapping]
+        if not isinstance(messageType, (str, MetaMessageType)):
+            raise TypeError('messageType must be either a string or MetaMessageType')
         return messageType, payload
 
     @staticmethod
