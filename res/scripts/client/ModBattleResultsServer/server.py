@@ -1,5 +1,5 @@
 from ModBattleResultsServer.fetcher import BattleResultsFetcher
-from ModBattleResultsServer.repository import BattleResultRepository
+from ModBattleResultsServer.recorder import BattleResultRecorder
 from ModBattleResultsServer.run_loop import RunLoop
 from ModBattleResultsServer.server_protocol import BattleResultsProtocol
 from ModBattleResultsServer.websocket import WebSocketServer
@@ -8,7 +8,7 @@ from debug_utils import LOG_NOTE
 HOST = 'localhost'
 PORT = 61942
 
-repository = BattleResultRepository()
+repository = BattleResultRecorder()
 
 battle_results_fetcher = BattleResultsFetcher()
 battle_results_fetcher.battle_result_fetched += repository.receive_battle_result

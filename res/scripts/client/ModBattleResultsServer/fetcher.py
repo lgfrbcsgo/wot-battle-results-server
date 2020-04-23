@@ -1,8 +1,5 @@
-import time
-
 from ChatManager import chatManager
 from Event import Event
-from ModBattleResultsServer.batte_result import BattleResult
 from ModBattleResultsServer.serialization import serialize_battle_results
 from ModBattleResultsServer.util import safe_callback, get
 from PlayerEvents import g_playerEvents
@@ -67,8 +64,7 @@ class BattleResultsFetcher(object):
                     response = yield BattleResultsGetter(arena_unique_id).request()
                     if response.success:
                         LOG_NOTE('Fetched battle result {}'.format(arena_unique_id))
-                        result = serialize_battle_results(response.auxData)
-                        battle_result = BattleResult(received_at=time.time(), result=result)
+                        battle_result = serialize_battle_results(response.auxData)
                         self.battle_result_fetched(battle_result)
                     else:
                         LOG_NOTE('Failed fetching battle result {}'.format(arena_unique_id))

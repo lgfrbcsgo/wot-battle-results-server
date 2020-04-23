@@ -1,8 +1,7 @@
 from typing import List
 
-from ModBattleResultsServer.batte_result import BattleResult
 from ModBattleResultsServer.protocol import Protocol, handler
-from ModBattleResultsServer.repository import BattleResultRepository
+from ModBattleResultsServer.recorder import BattleResultRecorder, BattleResultRecord
 from ModBattleResultsServer.transport import Transport
 
 
@@ -27,7 +26,7 @@ class ErrorType(object):
 
 class BattleResultsProtocol(Protocol):
     def __init__(self, repository, transport):
-        # type: (BattleResultRepository, Transport) -> None
+        # type: (BattleResultRecorder, Transport) -> None
         super(BattleResultsProtocol, self).__init__(transport)
         self.repository = repository
 
@@ -80,12 +79,12 @@ class BattleResultsProtocol(Protocol):
         for command in commands:
             self.handle_message(command)
 
-    def send_battle_result(self, battle_result):
-        # type: (BattleResult) -> None
+    def send_battle_result(self, record):
+        # type: (BattleResultRecord) -> None
         self.send(
             MessageType.BATTLE_RESULT,
-            receivedAt=battle_result.received_at,
-            result=battle_result.result
+            recordedAt=record.recorded_at,
+            result=record.result
         )
 
     def send_protocol_version(self, command_types):

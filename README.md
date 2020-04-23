@@ -51,18 +51,18 @@ Every command and message is a JSON object which contains at least a `messageTyp
 
 ### Messages
 -   Sent when replaying a battle result or when a new battle result must be pushed to the client.
-    `timestamp` is the timestamp when this battle result was recorded.
-    `battleResult` has the same format as the JSON fields found at the start of a .wotreplay file.
+    `recordedAt` is the timestamp when this battle result was recorded.
+    `result` has the same format as the JSON fields found at the start of a .wotreplay file.
     ```json
     {
       "messageType": "BATTLE_RESULT",
-      "receivedAt": "1587657932.152",
+      "recordedAt": "1587657932.152",
       "result": {}
     }
     ```
    
 -   Sent when the client first connects.
-    `commandTypes` lists all supported commands of the server.
+    `commands` lists all supported commands of the server.
     ```json
     {
       "messageType": "PROTOCOL_VERSION",
