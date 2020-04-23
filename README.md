@@ -3,66 +3,60 @@ WoT mod which starts a WebSocket server on `ws://localhost:61942` for serving ba
 
 ## Protocol
 The sever uses a message protocol which is based on JSON. 
-Every command and message is a JSON object which contains at least a `msgType` property.
+Every command and message is a JSON object which contains at least a `messageType` property.
 
 ### Commands
 -   Subscribes this client to the feed of battle results.
     ```json
     {
-      "msgType": "SUBSCRIBE_TO_BATTLE_RESULTS"
+      "messageType": "SUBSCRIBE"
     }
     ```
 
 
 -   Replays the battle results of the current gaming session to the client.
-    `sessionId` can be used to ensure that current session matches the expected one.
-    `offset` can be used to specify an offset when not all results have to be replayed.
-    An `offset` of `0` or omitting the `offset` will replay all battle results.
+    Optionally, a timestamp can be specified by `after` to only replay battle results after the given timestamp. 
     ```json
     {
-      "msgType": "REPLAY_BATTLE_RESULTS",
-      "sessionId": "88bd6588-b124-4890-83c8-5862ff171795",
-      "offset": 2
-    }
-    ```
-
--   Replays the battle results of the current gaming session to the client and then subscribes it to the feed.
-    `sessionId` can be used to ensure that current session matches the expected one.
-    `offset` can be used to specify an offset when not all results have to be replayed.
-    An `offset` of `0` or omitting the `offset` will replay all battle results.
-    ```json
-    {
-      "msgType": "REPLAY_AND_SUBSCRIBE_TO_BATTLE_RESULTS",
-      "sessionId": "88bd6588-b124-4890-83c8-5862ff171795",
-      "offset": 2
+      "messageType": "REPLAY",
+      "after": 1587657932
     }
     ```
 
 -   Unsubscribes the client from the feed of battle results.
     ```json
     {
-      "msgType": "UNSUBSCRIBE_FROM_BATTLE_RESULTS"
+      "messageType": "UNSUBSCRIBE"
     }
     ```
     
--   Starts a new gaming session. Results recorded before this command won't be replayed anymore.
+-   Allows running multiple commands after each other without any interruptions.
+    Individual commands are allowed to fail. 
+    It is guaranteed that no other commands are executed while the commands are being processed.
     ```json
     {
-      "msgType": "START_NEW_SESSION"
+      "messageType": "PIPELINE",
+      "commands": [
+        {
+          "messageType": "REPLAY",
+          "after": 42
+        },
+        {
+          "messageType": "SUBSCRIBE"
+        }
+      ]
     }
     ```
     
 
 ### Messages
 -   Sent when replaying a battle result or when a new battle result must be pushed to the client.
-    `sessionId` is a unique id of the gaming session which was active when this result was recorded.
-    `index` is the index of this `battleResult` within the gaming session which was active when this result was recorded. 
+    `timestamp` is the timestamp when this battle result was recorded.
     `battleResult` has the same format as the JSON fields found at the start of a .wotreplay file.
     ```json
     {
-      "msgType": "BATTLE_RESULT",
-      "sessionId": "88bd6588-b124-4890-83c8-5862ff171795",
-      "index": 1,
+      "messageType": "BATTLE_RESULT",
+      "timestamp": "1587657932",
       "battleResult": {}
     }
     ```
@@ -71,46 +65,20 @@ Every command and message is a JSON object which contains at least a `msgType` p
     `commandTypes` lists all supported commands of the server.
     ```json
     {
-      "msgType": "COMMANDS",
+      "messageType": "COMMANDS",
       "commandTypes": [
         "SOME_COMMAND",
         "SOME_OTHER_COMMAND" 
       ]
     }
     ```
-   
--   Sent when the client first connects or when the session changed.
-    `sessionId` is the unique id of the current gaming session. The `sessionId` is the same for all connections.
-    ```json
-    {
-      "msgType": "SESSION_ID",
-      "sessionId": "88bd6588-b124-4890-83c8-5862ff171795"
-    }
-    ```
     
--   Sent when the expected session id does not match the id of the current gaming session.
+-   Sent when the execution of a command failed.
     ```json
     {
-      "msgType": "SESSION_ID_MISMATCH",
-      "expectedSessionId": "91e2e9a8-547e-4688-8b8d-fbdc1483a8b1",
-      "currentSessionId": "88bd6588-b124-4890-83c8-5862ff171795"
+      "messageType": "ERROR",
+      "errorType": "UNKNOWN_COMMAND",
+      "errorMessage": "Command UNRECOGNISED_COMMAND is unknown."
     }
     ```
-    
--   Sent when a command from the client could not be recognised.
-    `commandType` is the original message type.
-    ```json
-    {
-      "msgType": "UNKNOWN_COMMAND",
-      "commandType": "UNRECOGNISED_COMMAND"
-    }
-    ```
-    
--   Sent when a command from the client could not be parsed.
-    `command` is the original message.
-    ```json
-    {
-      "msgType": "INVALID_COMMAND",
-      "command": "{\"msgType\": \"COMMAND\", "
-    }
-    ```
+ 

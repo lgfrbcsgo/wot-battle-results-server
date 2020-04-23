@@ -6,21 +6,21 @@ from ModBattleResultsServer.util import safe_callback
 
 
 class Handler(object):
-    def __init__(self, func, *msg_types):
-        self.msg_types = msg_types
+    def __init__(self, func, *message_types):
+        self.message_types = message_types
         self._func = safe_callback(func)
         update_wrapper(self, self._func)
 
     def __call__(self, *args, **kwargs):
         return self._func(*args, **kwargs)
 
-    def handles(self, msg_type):
-        return msg_type in self.msg_types
+    def handles(self, message_type):
+        return message_type in self.message_types
 
 
-def handler(*msg_types):
+def handler(*message_types):
     def decorator(func):
-        return Handler(func, *msg_types)
+        return Handler(func, *message_types)
     return decorator
 
 
@@ -33,65 +33,71 @@ class Protocol(object):
     DISCONNECTED = MetaMessageToken()
 
     def __init__(self, transport):
-        if not isinstance(transport, Transport):
-            raise TypeError('transport must be an instance of Transport')
+        # type: (Transport) -> None
         self.transport = transport
 
     def handle_data(self, data):
         try:
-            msg = json.loads(data)
-            msg_type, payload = self._deconstruct_message(**msg)
-        except (TypeError, ValueError):
+            message = json.loads(data)
+        except ValueError:
             self.handle_invalid_message(data)
         else:
-            self.dispatch_message(msg_type, **payload)
+            self.handle_message(message)
 
-    def handle_message_not_dispatched(self, msg_type):
+    def handle_message(self, message):
+        try:
+            message_type, payload = self._deconstruct_message(**message)
+        except TypeError:
+            self.handle_invalid_message(json.dumps(message))
+        else:
+            self.dispatch(message_type, **payload)
+
+    def handle_message_not_dispatched(self, message_type):
         pass
 
     def handle_invalid_message(self, data):
         pass
 
-    def dispatch_connected(self):
-        self.dispatch_message(Protocol.CONNECTED)
+    def handle_connected(self):
+        self.dispatch(Protocol.CONNECTED)
 
-    def dispatch_disconnected(self):
-        self.dispatch_message(Protocol.DISCONNECTED)
+    def handle_disconnected(self):
+        self.dispatch(Protocol.DISCONNECTED)
 
-    def dispatch_message(self, msg_type, **payload):
+    def dispatch(self, message_type, **payload):
         handled = False
 
         for _handler in self._handlers():
-            if _handler.handles(msg_type):
+            if _handler.handles(message_type):
                 _handler(self, **payload)
                 handled = True
 
-        if not handled and not isinstance(msg_type, MetaMessageToken):
-            self.handle_message_not_dispatched(msg_type)
+        if not handled and not isinstance(message_type, MetaMessageToken):
+            self.handle_message_not_dispatched(message_type)
 
-    def send_message(self, msg_type, **payload):
-        msg = self._construct_message(msg_type, payload)
-        data = json.dumps(msg)
+    def send(self, message_type, **payload):
+        message = self._construct_message(message_type, payload)
+        data = json.dumps(message)
         self.transport.send_message(data)
 
     @property
-    def handled_msg_types(self):
-        handled_msg_types = set()
+    def handled_message_types(self):
+        handled_message_types = set()
 
         for _handler in self._handlers():
-            for msg_type in _handler.msg_types:
-                if not isinstance(msg_type, MetaMessageToken):
-                    handled_msg_types.add(msg_type)
+            for message_type in _handler.message_types:
+                if not isinstance(message_type, MetaMessageToken):
+                    handled_message_types.add(message_type)
 
-        return handled_msg_types
-
-    @staticmethod
-    def _deconstruct_message(msgType=None, **payload):
-        return msgType, payload
+        return handled_message_types
 
     @staticmethod
-    def _construct_message(msg_type, payload):
-        return dict(msgType=msg_type, **payload)
+    def _deconstruct_message(messageType=None, **payload):
+        return messageType, payload
+
+    @staticmethod
+    def _construct_message(message_type, payload):
+        return dict(messageType=message_type, **payload)
 
     @classmethod
     def _handlers(cls):
