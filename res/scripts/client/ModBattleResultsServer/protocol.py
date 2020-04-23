@@ -1,15 +1,17 @@
 import json
 from collections import namedtuple
 from functools import update_wrapper
-from typing import Any, Mapping, Set, Callable, List, Union, Generator
+from typing import Any, Mapping, Set, Callable, Union, Generator
 
 from ModBattleResultsServer.transport import Transport
 from ModBattleResultsServer.util import safe_callback
 
+MetaMessageType = namedtuple('MetaMessageType', ('name',))
+
 
 class Handler(object):
     def __init__(self, func, *message_types):
-        # type: (Callable[[Any, Mapping], None], List[Any]) -> None
+        # type: (Callable[[...], None], Union[str, MetaMessageType]) -> None
         self.message_types = message_types
         self._func = safe_callback(func)
         update_wrapper(self, self._func)
@@ -18,17 +20,16 @@ class Handler(object):
         return self._func(*args, **kwargs)
 
     def handles(self, message_type):
+        # type: (Union[str, MetaMessageType]) -> bool
         return message_type in self.message_types
 
 
 def handler(*message_types):
+    # type: (Union[str, MetaMessageType]) -> Callable[[Callable[[...], None]], Handler]
     def decorator(func):
         return Handler(func, *message_types)
 
     return decorator
-
-
-MetaMessageType = namedtuple('MetaMessageType', ('name',))
 
 
 class Protocol(object):
@@ -74,7 +75,7 @@ class Protocol(object):
         self.dispatch(Protocol.DISCONNECTED)
 
     def dispatch(self, message_type, **payload):
-        # type: (Union[str, MetaMessageType], **Any) -> None
+        # type: (Union[str, MetaMessageType], Any) -> None
         handled = False
 
         for _handler in self._handlers():
@@ -86,7 +87,7 @@ class Protocol(object):
             self.handle_message_not_dispatched(message_type)
 
     def send(self, message_type, **payload):
-        # type: (Union[str, MetaMessageType], **Any) -> None
+        # type: (Union[str, MetaMessageType], Any) -> None
         message = self._construct_message(message_type, payload)
         data = json.dumps(message)
         self.transport.send_message(data)
