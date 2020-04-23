@@ -53,7 +53,7 @@ class Protocol(object):
         # type: (Any) -> None
         try:
             message_type, payload = self._deconstruct_message(**message)
-        except TypeError:
+        except (TypeError, UnicodeEncodeError):
             self.handle_invalid_message(json.dumps(message))
         else:
             self.dispatch(message_type, **payload)
@@ -106,10 +106,11 @@ class Protocol(object):
 
     @staticmethod
     def _deconstruct_message(messageType=None, **payload):
-        # type: (Any, Any) -> Tuple[Union[str, MetaMessageType], Mapping]
-        if not isinstance(messageType, (str, MetaMessageType)):
+        # type: (Any, Any) -> Tuple[str, Mapping]
+        if not isinstance(messageType, (str, unicode, bytes)):
             raise TypeError('messageType must be either a string or MetaMessageType')
-        return messageType, payload
+
+        return str(messageType), payload
 
     @staticmethod
     def _construct_message(message_type, payload):
