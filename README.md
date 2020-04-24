@@ -31,10 +31,10 @@ Every command and message is a JSON object which contains at least a `messageTyp
     ```
     
 -   Allows running multiple commands after each other without any interruptions.
-    Individual commands are allowed to fail. 
+    Individual commands are allowed to fail.  
     While the commands are being executed it is guaranteed that
-    1. no other commands are executed
-    2. no battle results are received
+    - no other commands are executed
+    - no battle results are received
     ```json
     {
       "messageType": "PIPELINE",
