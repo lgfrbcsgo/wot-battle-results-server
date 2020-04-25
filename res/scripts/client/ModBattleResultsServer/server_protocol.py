@@ -1,27 +1,38 @@
-from typing import List
+import json
 
 from ModBattleResultsServer.protocol import Protocol, handler
 from ModBattleResultsServer.recorder import BattleResultRecorder, BattleResultRecord
 from ModBattleResultsServer.transport import Transport
+from ModBattleResultsServer.util import get
+from ModBattleResultsServer.validation import record, field, number
 
 
 class CommandType(object):
+    REPLAY = 'REPLAY'
     SUBSCRIBE = 'SUBSCRIBE'
     UNSUBSCRIBE = 'UNSUBSCRIBE'
-    REPLAY = 'REPLAY'
-    PIPELINE = 'PIPELINE'
 
 
 class MessageType(object):
-    PROTOCOL_VERSION = 'PROTOCOL_VERSION'
     BATTLE_RESULT = 'BATTLE_RESULT'
     ERROR = 'ERROR'
+    PROTOCOL_VERSION = 'PROTOCOL_VERSION'
 
 
 class ErrorType(object):
-    UNKNOWN_COMMAND = 'UNKNOWN_COMMAND'
-    INVALID_COMMAND = 'INVALID_COMMAND'
-    INVALID_ARGUMENT = 'INVALID_ARGUMENT'
+    MALFORMED_JSON = 'MALFORMED_JSON'
+    MALFORMED_MESSAGE = 'MALFORMED_MESSAGE'
+    MALFORMED_PAYLOAD = 'MALFORMED_PAYLOAD'
+    UNRECOGNISED_COMMAND = 'UNRECOGNISED_COMMAND'
+
+
+class PayloadFields(object):
+    AFTER = 'after'
+    COMMANDS = 'commands'
+    MESSAGE = 'message'
+    RECORDED_AT = 'recordedAt'
+    RESULT = 'result'
+    TYPE = 'type'
 
 
 class BattleResultsProtocol(Protocol):
@@ -32,72 +43,66 @@ class BattleResultsProtocol(Protocol):
 
     def handle_message_not_dispatched(self, message_type):
         self.send_error(
-            ErrorType.UNKNOWN_COMMAND,
-            'Command {} is unknown.'.format(message_type)
+            ErrorType.UNRECOGNISED_COMMAND,
+            'Command not recognized: {}'.format(message_type)
         )
 
-    def handle_invalid_message(self, data):
+    def handle_malformed_json(self, data):
         self.send_error(
-            ErrorType.INVALID_COMMAND,
-            'Message is invalid: {}'.format(data)
+            ErrorType.MALFORMED_JSON,
+            'Malformed JSON: {}'.format(data)
         )
 
-    @handler(Protocol.CONNECTED)
-    def on_connected(self, **_):
-        self.send_protocol_version(list(self.handled_message_types))
+    def handle_malformed_message(self, messages, validation_message):
+        self.send_error(
+            ErrorType.MALFORMED_MESSAGE,
+            '{} Got: {}'.format(validation_message, json.dumps(messages))
+        )
 
-    @handler(CommandType.SUBSCRIBE)
-    def on_subscribe(self, **_):
+    def handle_malformed_payload(self, message_type, payload, validation_message):
+        self.send_error(
+            ErrorType.MALFORMED_PAYLOAD,
+            '{}: {} Got: {}'.format(message_type, validation_message, json.dumps(payload))
+        )
+
+    @handler([CommandType.SUBSCRIBE])
+    def on_subscribe(self, _):
         self.repository.received_battle_result += self.send_battle_result
 
-    @handler(CommandType.UNSUBSCRIBE, Protocol.DISCONNECTED)
-    def on_unsubscribe(self, **_):
+    @handler([CommandType.UNSUBSCRIBE, Protocol.DISCONNECTED])
+    def on_unsubscribe(self, _):
         self.repository.received_battle_result -= self.send_battle_result
 
-    @handler(CommandType.REPLAY)
-    def on_replay(self, after=None, **_):
+    @handler(
+        [CommandType.REPLAY],
+        validator=record(
+            field(PayloadFields.AFTER, number, optional=True)
+        )
+    )
+    def on_replay(self, payload):
+        after = get(payload, PayloadFields.AFTER)
         if after is None:
             after = 0
-
-        if not isinstance(after, (int, long, float)):
-            return self.send_error(
-                ErrorType.INVALID_ARGUMENT,
-                'Command {} expected command.after to be any of int, long, or float.'.format(CommandType.REPLAY)
-            )
 
         for result in self.repository.get_battle_results_after(after):
             self.send_battle_result(result)
 
-    @handler(CommandType.PIPELINE)
-    def on_pipeline(self, commands=None, **_):
-        if not isinstance(commands, list):
-            return self.send_error(
-                ErrorType.INVALID_ARGUMENT,
-                'Command {} expected command.commands to be a list.'.format(CommandType.PIPELINE)
-            )
-
-        for command in commands:
-            self.handle_message(command)
-
-    def send_battle_result(self, record):
+    def send_battle_result(self, result):
         # type: (BattleResultRecord) -> None
         self.send(
             MessageType.BATTLE_RESULT,
-            recordedAt=record.recorded_at,
-            result=record.result
-        )
-
-    def send_protocol_version(self, command_types):
-        # type: (List[str]) -> None
-        self.send(
-            MessageType.PROTOCOL_VERSION,
-            commands=command_types
+            {
+                PayloadFields.RECORDED_AT: result.recorded_at,
+                PayloadFields.RESULT: result.result
+            }
         )
 
     def send_error(self, error_type, error_message):
         # type: (str, str) -> None
         self.send(
             MessageType.ERROR,
-            type=error_type,
-            message=error_message
+            {
+                PayloadFields.TYPE: error_type,
+                PayloadFields.MESSAGE: error_message
+            }
         )

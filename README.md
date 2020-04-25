@@ -3,13 +3,14 @@ WoT mod which starts a WebSocket server on `ws://localhost:61942` for serving ba
 
 ## Protocol
 The sever uses a message protocol which is based on JSON. 
-Every command and message is a JSON object which contains at least a `messageType` property.
+Every command and message is a JSON object which contains a `messageType` and `payload` property.
 
 ### Commands
 -   Subscribes this client to the feed of battle results.
     ```json
     {
-      "messageType": "SUBSCRIBE"
+      "messageType": "SUBSCRIBE",
+      "payload": null
     }
     ```
 
@@ -19,14 +20,17 @@ Every command and message is a JSON object which contains at least a `messageTyp
     ```json
     {
       "messageType": "REPLAY",
-      "after": 1587657932.152
+      "payload": {
+        "after": 1587657932.152
+      }
     }
     ```
 
 -   Unsubscribes the client from the feed of battle results.
     ```json
     {
-      "messageType": "UNSUBSCRIBE"
+      "messageType": "UNSUBSCRIBE",
+      "payload": null
     }
     ```
     
@@ -36,18 +40,18 @@ Every command and message is a JSON object which contains at least a `messageTyp
     - no other commands are executed
     - no battle results are received
     ```json
-    {
-      "messageType": "PIPELINE",
-      "commands": [
-        {
-          "messageType": "REPLAY",
+    [
+      {
+        "messageType": "REPLAY",
+        "payload": {
           "after": 1587657932.152
-        },
-        {
-          "messageType": "SUBSCRIBE"
         }
-      ]
-    }
+      },
+      {
+        "messageType": "SUBSCRIBE",
+        "payload": null
+      }
+    ]
     ```
     
 
@@ -58,20 +62,10 @@ Every command and message is a JSON object which contains at least a `messageTyp
     ```json
     {
       "messageType": "BATTLE_RESULT",
-      "recordedAt": 1587657932.152,
-      "result": {}
-    }
-    ```
-   
--   Sent when the client first connects.
-    `commands` lists all supported commands of the server.
-    ```json
-    {
-      "messageType": "PROTOCOL_VERSION",
-      "commands": [
-        "SOME_COMMAND",
-        "SOME_OTHER_COMMAND" 
-      ]
+      "payload": {
+        "recordedAt": 1587657932.152,
+        "result": {}
+      }
     }
     ```
     
@@ -79,8 +73,10 @@ Every command and message is a JSON object which contains at least a `messageTyp
     ```json
     {
       "messageType": "ERROR",
-      "type": "UNKNOWN_COMMAND",
-      "message": "Command UNRECOGNISED_COMMAND is unknown."
+      "payload": {
+        "type": "UNKNOWN_COMMAND",
+        "message": "Command UNRECOGNISED_COMMAND is unknown."
+      }
     }
     ```
  
