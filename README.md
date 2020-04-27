@@ -10,7 +10,8 @@ Every command and message is a JSON object which contains a `messageType` and `p
     ```json
     {
       "messageType": "SUBSCRIBE",
-      "payload": null
+      "payload": {
+      }
     }
     ```
 
@@ -30,7 +31,8 @@ Every command and message is a JSON object which contains a `messageType` and `p
     ```json
     {
       "messageType": "UNSUBSCRIBE",
-      "payload": null
+      "payload": {
+      }
     }
     ```
     
@@ -49,7 +51,8 @@ Every command and message is a JSON object which contains a `messageType` and `p
       },
       {
         "messageType": "SUBSCRIBE",
-        "payload": null
+        "payload": {
+        }
       }
     ]
     ```

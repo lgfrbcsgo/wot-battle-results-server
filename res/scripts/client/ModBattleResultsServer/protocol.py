@@ -5,7 +5,7 @@ from typing import Any, Set, Callable, Union, Generator, List
 
 from ModBattleResultsServer.transport import Transport
 from ModBattleResultsServer.util import safe_callback, get
-from ModBattleResultsServer.validation import any_, record, field, string, validate, JsonValidationError, array
+from ModBattleResultsServer.validation import any_, record, field, string, validate, JsonValidationError, array, object_
 
 MetaMessageType = namedtuple('MetaMessageType', ('name',))
 
@@ -38,7 +38,7 @@ _MESSAGE_TYPE = 'messageType'
 _PAYLOAD = 'payload'
 _MESSAGE_VALIDATOR = record(
     field(_MESSAGE_TYPE, string),
-    field(_PAYLOAD, any_)
+    field(_PAYLOAD, object_)
 )
 _MESSAGES_VALIDATOR = array(_MESSAGE_VALIDATOR)
 
