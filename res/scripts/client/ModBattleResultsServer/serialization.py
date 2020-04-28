@@ -47,6 +47,8 @@ def encode_obj(obj):
         return encode_dict(obj)
     if isinstance(obj, (list, set, frozenset, tuple)):
         return encode_iterable(obj)
+    if isinstance(obj, long):
+        return encode_long(obj)
     return obj
 
 
@@ -56,3 +58,7 @@ def encode_dict(obj):
 
 def encode_iterable(obj):
     return [encode_obj(value) for value in obj]
+
+
+def encode_long(obj):
+    return str(obj)
