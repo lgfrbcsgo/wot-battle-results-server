@@ -1,5 +1,7 @@
 from copy import deepcopy
 
+from enum import Enum
+
 from ModBattleResultsServer.util import unset, get
 
 
@@ -49,6 +51,8 @@ def encode_obj(obj):
         return encode_iterable(obj)
     if isinstance(obj, long):
         return encode_long(obj)
+    if isinstance(obj, Enum):
+        return encode_enum(obj)
     return obj
 
 
@@ -62,3 +66,7 @@ def encode_iterable(obj):
 
 def encode_long(obj):
     return str(obj)
+
+
+def encode_enum(obj):
+    return obj.value
