@@ -1,6 +1,11 @@
 # WoT Battle Results Server
 WoT mod which starts a WebSocket server on `ws://localhost:61942` for serving battle results.
 
+## Demo Apps
+[Live WN8](https://lgfrbcsgo.github.io/wot-live-win-rate/) ([Source](https://github.com/lgfrbcsgo/wot-live-wn8))
+
+[Live Win Rate](https://lgfrbcsgo.github.io/wot-live-win-rate/) ([Source](https://github.com/lgfrbcsgo/wot-live-win-rate))
+
 ## Protocol
 The sever uses a message protocol which is based on JSON. 
 Every command and message is a JSON object which contains a `messageType` and `payload` property.
