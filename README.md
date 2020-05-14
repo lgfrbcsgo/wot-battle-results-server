@@ -9,6 +9,7 @@ WoT mod which starts a WebSocket server on `ws://localhost:61942` for serving ba
 ## Protocol
 The sever uses a message protocol which is based on JSON. 
 Every command and message is a JSON object which contains a `messageType` and `payload` property.
+(`payload` must be an object.)
 
 ### Commands
 -   Subscribes this client to the feed of battle results.
@@ -22,7 +23,7 @@ Every command and message is a JSON object which contains a `messageType` and `p
 
 
 -   Replays the battle results of the current gaming session to the client.
-    Optionally, a timestamp can be specified by `after` to only replay battle results after the given timestamp. 
+    - `after`: optional timestamp to only replay battle results after the given timestamp. Can be omitted.
     ```json
     {
       "messageType": "REPLAY",
@@ -43,9 +44,7 @@ Every command and message is a JSON object which contains a `messageType` and `p
     
 -   Allows running multiple commands after each other without any interruptions.
     Individual commands are allowed to fail.  
-    While the commands are being executed it is guaranteed that
-    - no other commands are executed
-    - no battle results are received
+    While the commands are being executed it is guaranteed that no other commands are executed and that no battle results are received.
     ```json
     [
       {
@@ -64,15 +63,22 @@ Every command and message is a JSON object which contains a `messageType` and `p
     
 
 ### Messages
--   Sent when replaying a battle result or when a new battle result must be pushed to the client.
-    `recordedAt` is the timestamp when this battle result was recorded.
-    `result` has the same format as the JSON fields found at the start of a .wotreplay file.
+-   Sent when replaying a battle result or when a new battle result must be pushed to the client.  
+    - `recordedAt`: timestamp when this battle result was recorded.  
+    - `result`: battle result in the same format as the JSON found at the start of a `.wotreplay` file.
     ```json
     {
       "messageType": "BATTLE_RESULT",
       "payload": {
         "recordedAt": 1587657932.152,
-        "result": {...}
+        "result": {
+          "arenaUniqueID": "104502528107595980",
+          "personal": {},
+          "vehicles": {},
+          "avatars": {},
+          "players": {},
+          "common": {}
+        }
       }
     }
     ```
