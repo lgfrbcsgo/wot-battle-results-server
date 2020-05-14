@@ -67,18 +67,28 @@ Every command and message is a JSON object which contains a `messageType` and `p
     > `recordedAt`: timestamp when this battle result was recorded.
                                                                                                      
     > `result`: battle result in the same format as the JSON found at the start of a `.wotreplay` file.
-    ```json
+    ```json5
     {
       "messageType": "BATTLE_RESULT",
       "payload": {
         "recordedAt": 1587657932.152,
         "result": {
           "arenaUniqueID": "104502528107595980",
-          "personal": {},
-          "vehicles": {},
-          "avatars": {},
-          "players": {},
-          "common": {}
+          "personal": {
+            // ...
+          },
+          "vehicles": {
+            // ...
+          },
+          "avatars": {
+            // ...
+          },
+          "players": {
+            // ...
+          },
+          "common": {
+            // ...
+          }
         }
       }
     }
