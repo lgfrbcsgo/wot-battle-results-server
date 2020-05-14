@@ -1,159 +1,154 @@
 import json
-from collections import namedtuple
-from functools import update_wrapper
-from typing import Any, Set, Callable, Union, Generator, List
+from contextlib import contextmanager
+from typing import Any, Callable, Dict, List, Type
 
-from ModBattleResultsServer.transport import Transport
-from ModBattleResultsServer.util import safe_callback, get
-from ModBattleResultsServer.validation import any_, record, field, string, validate, JsonValidationError, array, object_
+from ModBattleResultsServer.util import get
+from ModBattleResultsServer.validation import (any_, array, field, object_,
+                                               record, string)
 
-MetaMessageType = namedtuple('MetaMessageType', ('name',))
-
-
-class Handler(object):
-    def __init__(self, func, message_types, validator):
-        # type: (Callable[[...], None], List[Union[str, MetaMessageType]], Callable[[Any], None]) -> None
-        self.message_types = message_types
-        self.validator = validator
-        self._func = safe_callback(func)
-        update_wrapper(self, self._func)
-
-    def __call__(self, *args, **kwargs):
-        return self._func(*args, **kwargs)
-
-    def handles(self, message_type):
-        # type: (Union[str, MetaMessageType]) -> bool
-        return message_type in self.message_types
+MESSAGE_TYPE = "messageType"
+PAYLOAD = "payload"
+validate_message = record(field(MESSAGE_TYPE, string), field(PAYLOAD, object_(any_)))
+validate_messages = array(validate_message)
 
 
-def handler(message_types, validator=any_):
-    # type: (List[Union[str, MetaMessageType]], Callable[[Any], None]) -> Callable[[Callable[[...], None]], Handler]
-    def decorator(func):
-        return Handler(func, message_types, validator)
+def send(transport, message_type, payload):
+    # type: (Transport, str, Any) -> None
+    message = {MESSAGE_TYPE: message_type, PAYLOAD: payload}
+    validate_message(message)
+    data = json.dumps(message)
+    transport.send_message(data)
 
-    return decorator
 
-
-_MESSAGE_TYPE = 'messageType'
-_PAYLOAD = 'payload'
-_MESSAGE_VALIDATOR = record(
-    field(_MESSAGE_TYPE, string),
-    field(_PAYLOAD, object_)
-)
-_MESSAGES_VALIDATOR = array(_MESSAGE_VALIDATOR)
+def close(transport):
+    # type: (Transport) -> None
+    transport.close()
 
 
 class Protocol(object):
-    CONNECTED = MetaMessageType('CONNECTED')
-    DISCONNECTED = MetaMessageType('DISCONNECTED')
+    def __init__(self):
+        self._connected_handlers = []  # type: List[Callable[[Transport], None]]
+        self._disconnected_handlers = []  # type: List[Callable[[Transport], None]]
+        self._handlers = (
+            dict()
+        )  # type: Dict[str, List[Callable[[Transport, Any], None]]]
+        self._default_handlers = []  # type: List[Callable[[Transport, str, Any], None]]
+        self._error_handlers = (
+            dict()
+        )  # type: Dict[Type, List[Callable[[Transport, Any], None]]]
+        self._default_error_handlers = (
+            []
+        )  # type: List[Callable[[Transport, Any], None]]
 
-    def __init__(self, transport):
+    def on_connected(self, func):
+        # type: (Callable[[Transport], None]) -> Callable[[Transport], None]
+        self._connected_handlers.append(func)
+        return func
+
+    def on_disconnected(self, func):
+        # type: (Callable[[Transport], None]) -> Callable[[Transport], None]
+        self._disconnected_handlers.append(func)
+        return func
+
+    def on(self, message_type):
+        # type: (str) -> ...
+        def decorator(func):
+            # type: (Callable[[Transport, Any], None]) -> Callable[[Transport, Any], None]
+            if message_type not in self._handlers:
+                self._handlers[message_type] = []
+
+            self._handlers[message_type].append(func)
+            return func
+
+        return decorator
+
+    def default_on(self, func):
+        # type: (Callable[[Transport, str, Any], None]) -> Callable[[Transport, str, Any], None]
+        self._default_handlers.append(func)
+        return func
+
+    def on_error(self, error_type):
+        # type: (Type) -> ...
+        def decorator(func):
+            # type: (Callable[[Transport, Any], None]) -> Callable[[Transport, Any], None]
+            if error_type not in self._error_handlers:
+                self._error_handlers[error_type] = []
+
+            self._error_handlers[error_type].append(func)
+            return func
+
+        return decorator
+
+    def default_on_error(self, func):
+        # type: (Callable[[Transport, Any], None]) -> Callable[[Transport, Any], None]
+        self._default_error_handlers.append(func)
+        return func
+
+    def handle_connect(self, transport):
         # type: (Transport) -> None
-        self.transport = transport
+        for handler in self._connected_handlers:
+            handler(transport)
 
-    def handle_data(self, data):
-        # type: (str) -> None
-        try:
+    def handle_disconnect(self, transport):
+        # type: (Transport) -> None
+        for handler in self._disconnected_handlers:
+            handler(transport)
+
+    def handle_data(self, transport, data):
+        # type: (Transport, str) -> None
+        with self._dispatch_catched_error(transport):
             messages = json.loads(data)
-        except ValueError:
-            self.handle_malformed_json(data)
-        except TypeError:
-            self.handle_malformed_json(None)
-        else:
             if isinstance(messages, list):
-                self.handle_messages(messages)
+                self.handle_messages(transport, messages)
             else:
-                self.handle_message(messages)
+                self.handle_message(transport, messages)
 
-    def handle_message(self, message):
-        # type: (Any) -> None
-        try:
-            validate(_MESSAGE_VALIDATOR, message, 'message')
-        except JsonValidationError as e:
-            self.handle_malformed_message(message, str(e))
-        else:
-            message_type = get(message, _MESSAGE_TYPE)
-            payload = get(message, _PAYLOAD)
-            self.dispatch(message_type, payload)
+    def handle_message(self, transport, message):
+        # type: (Transport ,Any) -> None
+        with self._dispatch_catched_error(transport):
+            validate_message(message)
+            message_type = get(message, MESSAGE_TYPE)
+            payload = get(message, PAYLOAD)
+            self._dispatch(transport, message_type, payload)
 
-    def handle_messages(self, messages):
-        # type: (List[Any]) -> None
-        try:
-            validate(_MESSAGES_VALIDATOR, messages, 'messages')
-        except JsonValidationError as e:
-            self.handle_malformed_message(messages, str(e))
-        else:
+    def handle_messages(self, transport, messages):
+        # type: (Transport, List[Any]) -> None
+        with self._dispatch_catched_error(transport):
+            validate_messages(messages)
             for message in messages:
-                message_type = get(message, _MESSAGE_TYPE)
-                payload = get(message, _PAYLOAD)
-                self.dispatch(message_type, payload)
+                message_type = get(message, MESSAGE_TYPE)
+                payload = get(message, PAYLOAD)
+                self._dispatch(transport, message_type, payload)
 
-    def handle_message_not_dispatched(self, message_type):
-        # type: (str) -> None
-        pass
+    def _dispatch(self, transport, message_type, payload):
+        handlers = self._handlers.get(message_type, [])
+        if len(handlers) > 0:
+            for handler in handlers:
+                handler(transport, payload)
+        else:
+            for handler in self._default_handlers:
+                handler(transport, message_type, payload)
 
-    def handle_malformed_json(self, data):
-        # type: (Union[str, None]) -> None
-        pass
+    def _dispatch_error(self, transport, error):
+        handlers = self._error_handlers.get(type(error), [])
+        if len(handlers) > 0:
+            for handler in handlers:
+                handler(transport, error)
+        else:
+            for handler in self._default_error_handlers:
+                handler(transport, error)
 
-    def handle_malformed_message(self, messages, validation_message):
-        # type: (Any, str) -> None
-        pass
+    @contextmanager
+    def _dispatch_catched_error(self, transport):
+        try:
+            yield
+        except Exception as e:
+            self._dispatch_error(transport, e)
 
-    def handle_malformed_payload(self, message_type, payload, validation_message):
-        # type: (str, Any, str) -> None
-        pass
 
-    def handle_connected(self):
-        # type: () -> None
-        self.dispatch(self.CONNECTED)
+class Transport(object):
+    def send_message(self, data):
+        raise NotImplementedError
 
-    def handle_disconnected(self):
-        # type: () -> None
-        self.dispatch(self.DISCONNECTED)
-
-    def dispatch(self, message_type, payload=None):
-        # type: (Union[str, MetaMessageType], Any) -> None
-        handlers = [_handler for _handler in self._handlers() if _handler.handles(message_type)]
-
-        if len(handlers) == 0 and not isinstance(message_type, MetaMessageType):
-            self.handle_message_not_dispatched(message_type)
-            return
-
-        for _handler in handlers:
-            try:
-                validate(_handler.validator, payload, _PAYLOAD)
-            except JsonValidationError as e:
-                return self.handle_malformed_payload(message_type, payload, str(e))
-
-        for _handler in handlers:
-            _handler(self, payload)
-
-    def send(self, message_type, payload):
-        # type: (Union[str, MetaMessageType], Any) -> None
-        message = {
-            _MESSAGE_TYPE: message_type,
-            _PAYLOAD: payload
-        }
-        data = json.dumps(message)
-        self.transport.send_message(data)
-
-    @property
-    def handled_message_types(self):
-        # type: () -> Set[Union[str]]
-        handled_message_types = set()
-
-        for _handler in self._handlers():
-            for message_type in _handler.message_types:
-                if not isinstance(message_type, MetaMessageType):
-                    handled_message_types.add(message_type)
-
-        return handled_message_types
-
-    @classmethod
-    def _handlers(cls):
-        # type: () -> Generator[Handler]
-        for attribute_name in dir(cls):
-            attribute = getattr(cls, attribute_name)
-            if isinstance(attribute, Handler):
-                yield attribute
+    def close(self):
+        raise NotImplementedError
