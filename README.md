@@ -23,7 +23,7 @@ Every command and message is a JSON object which contains a `messageType` and `p
 
 
 -   Replays the battle results of the current gaming session to the client.
-    - `after`: optional timestamp to only replay battle results after the given timestamp. Can be omitted.
+    > `after`: optional timestamp to only replay battle results after the given timestamp. Can be omitted.
     ```json
     {
       "messageType": "REPLAY",
@@ -64,8 +64,9 @@ Every command and message is a JSON object which contains a `messageType` and `p
 
 ### Messages
 -   Sent when replaying a battle result or when a new battle result must be pushed to the client.  
-    - `recordedAt`: timestamp when this battle result was recorded.  
-    - `result`: battle result in the same format as the JSON found at the start of a `.wotreplay` file.
+    > `recordedAt`: timestamp when this battle result was recorded.
+                                                                                                     
+    > `result`: battle result in the same format as the JSON found at the start of a `.wotreplay` file.
     ```json
     {
       "messageType": "BATTLE_RESULT",
