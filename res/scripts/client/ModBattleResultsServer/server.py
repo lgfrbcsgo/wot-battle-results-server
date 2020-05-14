@@ -16,10 +16,23 @@ PORT = 61942
 
 BattleResultRecord = namedtuple("BattleResultRecord", ("recorded_at", "result"))
 
-protocol = Protocol()
-
 subscribers = []  # type: List[Transport]
 battle_result_records = []  # type: List[BattleResultRecord]
+
+
+def log_and_notify_subscribers(battle_result):
+    battle_result_record = BattleResultRecord(
+        recorded_at=time.time(), result=battle_result
+    )
+    battle_result_records.append(battle_result_record)
+    for transport in subscribers:
+        send_battle_result(transport, battle_result_record)
+
+
+battle_results_fetcher = BattleResultsFetcher()
+battle_results_fetcher.battle_result_fetched += log_and_notify_subscribers
+
+protocol = Protocol()
 
 
 @protocol.on("SUBSCRIBE")
@@ -48,7 +61,7 @@ def replay(transport, payload):
             send_battle_result(transport, battle_result_record)
 
 
-@protocol.default_on
+@protocol.on_unhandled
 def unknown_command(transport, message_type, _=None):
     send_error(
         transport,
@@ -62,7 +75,7 @@ def validation_error(transport, exception):
     send_error(transport, "VALIDATION", str(exception))
 
 
-@protocol.default_on_error
+@protocol.on_unhandled_error
 def generic_error(transport, exception):
     send_error(transport, "GENERIC", str(exception))
 
@@ -78,18 +91,6 @@ def send_battle_result(transport, result):
 def send_error(transport, error_type, error_message):
     send(transport, "ERROR", {"type": error_type, "message": error_message})
 
-
-def log_and_notify_subscribers(battle_result):
-    battle_result_record = BattleResultRecord(
-        recorded_at=time.time(), result=battle_result
-    )
-    battle_result_records.append(battle_result_record)
-    for transport in subscribers:
-        send_battle_result(transport, battle_result_record)
-
-
-battle_results_fetcher = BattleResultsFetcher()
-battle_results_fetcher.battle_result_fetched += log_and_notify_subscribers
 
 server = WebSocketServer(HOST, PORT, protocol)
 server_run_loop = RunLoop(server.serveonce)

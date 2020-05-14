@@ -1,10 +1,17 @@
 import json
 from contextlib import contextmanager
+
 from typing import Any, Callable, Dict, List, Type
 
 from ModBattleResultsServer.util import get
-from ModBattleResultsServer.validation import (any_, array, field, object_,
-                                               record, string)
+from ModBattleResultsServer.validation import (
+    any_,
+    array,
+    field,
+    object_,
+    record,
+    string,
+)
 
 MESSAGE_TYPE = "messageType"
 PAYLOAD = "payload"
@@ -62,7 +69,7 @@ class Protocol(object):
 
         return decorator
 
-    def default_on(self, func):
+    def on_unhandled(self, func):
         # type: (Callable[[Transport, str, Any], None]) -> Callable[[Transport, str, Any], None]
         self._default_handlers.append(func)
         return func
@@ -79,7 +86,7 @@ class Protocol(object):
 
         return decorator
 
-    def default_on_error(self, func):
+    def on_unhandled_error(self, func):
         # type: (Callable[[Transport, Any], None]) -> Callable[[Transport, Any], None]
         self._default_error_handlers.append(func)
         return func
@@ -96,7 +103,7 @@ class Protocol(object):
 
     def handle_data(self, transport, data):
         # type: (Transport, str) -> None
-        with self._dispatch_catched_error(transport):
+        with self._catch_error(transport):
             messages = json.loads(data)
             if isinstance(messages, list):
                 self.handle_messages(transport, messages)
@@ -105,7 +112,7 @@ class Protocol(object):
 
     def handle_message(self, transport, message):
         # type: (Transport ,Any) -> None
-        with self._dispatch_catched_error(transport):
+        with self._catch_error(transport):
             validate_message(message)
             message_type = get(message, MESSAGE_TYPE)
             payload = get(message, PAYLOAD)
@@ -113,7 +120,7 @@ class Protocol(object):
 
     def handle_messages(self, transport, messages):
         # type: (Transport, List[Any]) -> None
-        with self._dispatch_catched_error(transport):
+        with self._catch_error(transport):
             validate_messages(messages)
             for message in messages:
                 message_type = get(message, MESSAGE_TYPE)
@@ -139,7 +146,7 @@ class Protocol(object):
                 handler(transport, error)
 
     @contextmanager
-    def _dispatch_catched_error(self, transport):
+    def _catch_error(self, transport):
         try:
             yield
         except Exception as e:

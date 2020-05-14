@@ -72,7 +72,7 @@ Every command and message is a JSON object which contains a `messageType` and `p
       "messageType": "BATTLE_RESULT",
       "payload": {
         "recordedAt": 1587657932.152,
-        "result": {}
+        "result": {...}
       }
     }
     ```
