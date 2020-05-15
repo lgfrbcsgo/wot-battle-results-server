@@ -6,7 +6,7 @@ from debug_utils import LOG_NOTE
 from ModBattleResultsServer.fetcher import BattleResultsFetcher
 from ModBattleResultsServer.protocol import Protocol, Transport, send
 from ModBattleResultsServer.run_loop import RunLoop
-from ModBattleResultsServer.util import get
+from ModBattleResultsServer.util import JsonParseError, get
 from ModBattleResultsServer.validation import (ValidationError, field, number,
                                                record)
 from ModBattleResultsServer.websocket import WebSocketServer
@@ -75,9 +75,14 @@ def validation_error(transport, exception):
     send_error(transport, "VALIDATION", str(exception))
 
 
+@protocol.on_error(JsonParseError)
+def json_parse_error(transport, exception):
+    send_error(transport, "JSON_DECODE", str(exception))
+
+
 @protocol.on_unhandled_error
-def generic_error(transport, exception):
-    send_error(transport, "GENERIC", str(exception))
+def generic_error(transport, _=None):
+    send_error(transport, "INTERNAL", "Internal error.")
 
 
 @protocol.on_connected

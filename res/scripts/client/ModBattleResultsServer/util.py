@@ -1,4 +1,5 @@
 import inspect
+import json
 import sys
 from functools import wraps
 
@@ -18,6 +19,25 @@ def get(dct, *path):
         dct = dct[segment]
 
     return dct
+
+
+class JsonParseError(Exception):
+    pass
+
+
+def parse_json(string):
+    try:
+        return json.loads(string)
+    except ValueError as e:
+        raise JsonParseError(e)
+    except TypeError:
+        raise JsonParseError(
+            "Expected plain text, got {type}.".format(type=type(string))
+        )
+
+
+def serialize_to_json(obj):
+    return json.dumps(obj)
 
 
 def safe_callback(func):

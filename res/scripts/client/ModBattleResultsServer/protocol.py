@@ -1,17 +1,8 @@
-import json
-from contextlib import contextmanager
-
 from typing import Any, Callable, Dict, List, Type
 
-from ModBattleResultsServer.util import get
-from ModBattleResultsServer.validation import (
-    any_,
-    array,
-    field,
-    object_,
-    record,
-    string,
-)
+from ModBattleResultsServer.util import get, parse_json, serialize_to_json
+from ModBattleResultsServer.validation import (any_, array, field, object_,
+                                               record, string)
 
 MESSAGE_TYPE = "messageType"
 PAYLOAD = "payload"
@@ -23,7 +14,7 @@ def send(transport, message_type, payload):
     # type: (Transport, str, Any) -> None
     message = {MESSAGE_TYPE: message_type, PAYLOAD: payload}
     validate_message(message)
-    data = json.dumps(message)
+    data = serialize_to_json(message)
     transport.send_message(data)
 
 
@@ -93,8 +84,12 @@ class Protocol(object):
 
     def handle_connect(self, transport):
         # type: (Transport) -> None
-        for handler in self._connected_handlers:
-            handler(transport)
+        try:
+            for handler in self._connected_handlers:
+                handler(transport)
+        except Exception as e:
+            transport.close()
+            raise e
 
     def handle_disconnect(self, transport):
         # type: (Transport) -> None
@@ -103,56 +98,52 @@ class Protocol(object):
 
     def handle_data(self, transport, data):
         # type: (Transport, str) -> None
-        with self._catch_error(transport):
-            messages = json.loads(data)
+        try:
+            messages = parse_json(data)
             if isinstance(messages, list):
-                self.handle_messages(transport, messages)
+                self._handle_messages(transport, messages)
             else:
-                self.handle_message(transport, messages)
+                self._handle_message(transport, messages)
+        except Exception as e:
+            if not self._dispatch_error(transport, e):
+                raise e
 
-    def handle_message(self, transport, message):
+    def _handle_message(self, transport, message):
         # type: (Transport ,Any) -> None
-        with self._catch_error(transport):
-            validate_message(message)
+        validate_message(message)
+        message_type = get(message, MESSAGE_TYPE)
+        payload = get(message, PAYLOAD)
+        self._dispatch(transport, message_type, payload)
+
+    def _handle_messages(self, transport, messages):
+        # type: (Transport, List[Any]) -> None
+        validate_messages(messages)
+        for message in messages:
             message_type = get(message, MESSAGE_TYPE)
             payload = get(message, PAYLOAD)
             self._dispatch(transport, message_type, payload)
-
-    def handle_messages(self, transport, messages):
-        # type: (Transport, List[Any]) -> None
-        with self._catch_error(transport):
-            validate_messages(messages)
-            for message in messages:
-                message_type = get(message, MESSAGE_TYPE)
-                payload = get(message, PAYLOAD)
-                self._dispatch(transport, message_type, payload)
 
     def _dispatch(self, transport, message_type, payload):
         handlers = self._handlers.get(message_type, [])
         if len(handlers) > 0:
             for handler in handlers:
                 handler(transport, payload)
+            return True
         else:
             for handler in self._default_handlers:
                 handler(transport, message_type, payload)
+            return False
 
     def _dispatch_error(self, transport, error):
         handlers = self._error_handlers.get(type(error), [])
         if len(handlers) > 0:
             for handler in handlers:
                 handler(transport, error)
-        elif len(self._default_error_handlers) > 0:
+            return True
+        else:
             for handler in self._default_error_handlers:
                 handler(transport, error)
-        else:
-            raise error
-
-    @contextmanager
-    def _catch_error(self, transport):
-        try:
-            yield
-        except Exception as e:
-            self._dispatch_error(transport, e)
+            return False
 
 
 class Transport(object):
