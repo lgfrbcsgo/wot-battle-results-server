@@ -80,6 +80,16 @@ def generic_error(transport, exception):
     send_error(transport, "GENERIC", str(exception))
 
 
+@protocol.on_connected
+def connected(transport):
+    LOG_NOTE("{transport} connected.".format(transport=transport))
+
+
+@protocol.on_disconnected
+def disconnected(transport):
+    LOG_NOTE("{transport} disconnected.".format(transport=transport))
+
+
 def send_battle_result(transport, result):
     send(
         transport,
