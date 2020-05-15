@@ -2,7 +2,9 @@ from functools import partial
 from typing import Any
 
 from ModBattleResultsServer.lib.SimpleWebSocketServer import (
-    SimpleWebSocketServer, WebSocket)
+    SimpleWebSocketServer,
+    WebSocket,
+)
 from ModBattleResultsServer.protocol import Protocol, Transport
 from ModBattleResultsServer.util import get, safe_callback
 

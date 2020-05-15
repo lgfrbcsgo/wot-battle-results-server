@@ -1,8 +1,7 @@
 from copy import deepcopy
-
 from enum import Enum
 
-from ModBattleResultsServer.util import unset, get
+from ModBattleResultsServer.util import get, unset
 
 
 def serialize_battle_results(results):
@@ -14,32 +13,32 @@ def serialize_battle_results(results):
 def sanitize_battle_results(results):
     results = deepcopy(results)
 
-    vehicles = get(results, 'vehicles')
+    vehicles = get(results, "vehicles")
     if vehicles is not None:
         for player_vehicles in vehicles.itervalues():
             for vehicle in player_vehicles:
-                unset(vehicle, 'damageEventList')
+                unset(vehicle, "damageEventList")
 
-    personal = get(results, 'personal')
+    personal = get(results, "personal")
     if personal is not None:
         for vehicle in personal.itervalues():
-            unset(vehicle, 'damageEventList')
-            unset(vehicle, 'xpReplay')
-            unset(vehicle, 'creditsReplay')
-            unset(vehicle, 'tmenXPReplay')
-            unset(vehicle, 'goldReplay')
-            unset(vehicle, 'crystalReplay')
-            unset(vehicle, 'eventCoinReplay')
-            unset(vehicle, 'freeXPReplay')
-            unset(vehicle, 'avatarDamageEventList')
+            unset(vehicle, "damageEventList")
+            unset(vehicle, "xpReplay")
+            unset(vehicle, "creditsReplay")
+            unset(vehicle, "tmenXPReplay")
+            unset(vehicle, "goldReplay")
+            unset(vehicle, "crystalReplay")
+            unset(vehicle, "eventCoinReplay")
+            unset(vehicle, "freeXPReplay")
+            unset(vehicle, "avatarDamageEventList")
 
-            ext_meta = get(vehicle, 'ext', 'epicMetaGame')
+            ext_meta = get(vehicle, "ext", "epicMetaGame")
             if ext_meta is not None:
-                unset(ext_meta, 'flXPReplay')
+                unset(ext_meta, "flXPReplay")
 
-    common = get(results, 'common')
+    common = get(results, "common")
     if common is not None:
-        unset(common, 'accountCompDescr')
+        unset(common, "accountCompDescr")
 
     return results
 

@@ -1,7 +1,6 @@
 from typing import Callable
 
 import BigWorld
-
 from ModBattleResultsServer.util import safe_callback
 
 

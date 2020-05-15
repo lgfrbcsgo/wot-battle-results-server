@@ -1,8 +1,14 @@
 from typing import Any, Callable, Dict, List, Type
 
 from ModBattleResultsServer.util import get, parse_json, serialize_to_json
-from ModBattleResultsServer.validation import (any_, array, field, object_,
-                                               record, string)
+from ModBattleResultsServer.validation import (
+    any_,
+    array,
+    field,
+    object_,
+    record,
+    string,
+)
 
 MESSAGE_TYPE = "messageType"
 PAYLOAD = "payload"

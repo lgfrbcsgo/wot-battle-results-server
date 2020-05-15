@@ -7,8 +7,7 @@ from ModBattleResultsServer.fetcher import BattleResultsFetcher
 from ModBattleResultsServer.protocol import Protocol, Transport, send
 from ModBattleResultsServer.run_loop import RunLoop
 from ModBattleResultsServer.util import JsonParseError, get
-from ModBattleResultsServer.validation import (ValidationError, field, number,
-                                               record)
+from ModBattleResultsServer.validation import ValidationError, field, number, record
 from ModBattleResultsServer.websocket import WebSocketServer
 
 HOST = "localhost"
