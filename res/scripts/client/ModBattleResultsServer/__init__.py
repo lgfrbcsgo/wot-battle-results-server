@@ -1,2 +1,1 @@
-import ModBattleResultsServer.battle_result_cache_patch
-from ModBattleResultsServer.server import init, fini
+from ModBattleResultsServer.server import fini, init
