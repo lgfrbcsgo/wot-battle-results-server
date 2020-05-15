@@ -141,9 +141,11 @@ class Protocol(object):
         if len(handlers) > 0:
             for handler in handlers:
                 handler(transport, error)
-        else:
+        elif len(self._default_error_handlers) > 0:
             for handler in self._default_error_handlers:
                 handler(transport, error)
+        else:
+            raise error
 
     @contextmanager
     def _catch_error(self, transport):
