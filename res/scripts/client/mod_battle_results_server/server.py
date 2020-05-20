@@ -1,14 +1,24 @@
 import time
 from collections import namedtuple
-from typing import List
+from typing import Any, List
 
-from async import async, await
-from debug_utils import LOG_NOTE
+from async import _Future, async, await
+from debug_utils import LOG_CURRENT_EXCEPTION, LOG_NOTE
 from mod_async_server import Server, delay
 from mod_battle_results_server.fetcher import BattleResultsFetcher
-from mod_battle_results_server.protocol import Protocol, send
-from mod_battle_results_server.util import JsonParseError, get
-from mod_battle_results_server.validation import ValidationError, field, number, record
+from mod_battle_results_server.util import (
+    JsonParseError,
+    get,
+    parse_json,
+    serialize_to_json,
+)
+from mod_battle_results_server.validation import (
+    ValidationError,
+    field,
+    number,
+    record,
+    string,
+)
 from mod_websocket_server import MessageStream, websocket_protocol
 
 PORT = 61942
@@ -17,6 +27,16 @@ BattleResultRecord = namedtuple("BattleResultRecord", ("recorded_at", "result"))
 
 subscribers = []  # type: List[MessageStream]
 battle_result_records = []  # type: List[BattleResultRecord]
+
+
+def subscribe(stream):
+    if stream not in subscribers:
+        subscribers.append(stream)
+
+
+def unsubscribe(stream):
+    if stream in subscribers:
+        subscribers.remove(stream)
 
 
 def log_and_notify_subscribers(battle_result):
@@ -32,23 +52,56 @@ def log_and_notify_subscribers(battle_result):
 battle_results_fetcher = BattleResultsFetcher()
 battle_results_fetcher.battle_result_fetched += log_and_notify_subscribers
 
-protocol = Protocol()
+MESSAGE_TYPE = "messageType"
+PAYLOAD = "payload"
+validate_message = record(field(MESSAGE_TYPE, string), field(PAYLOAD, record()))
 
 
-@protocol.on("SUBSCRIBE")
-def subscribe(stream, _=None):
-    if stream not in subscribers:
-        subscribers.append(stream)
+@websocket_protocol
+@async
+def protocol(server, stream):
+    # type: (Server, MessageStream) -> _Future
+    host, port = stream.peer_addr
+    LOG_NOTE("[{host}]:{port} connected.".format(host=host, port=port))
+    try:
+        while True:
+            data = yield await(stream.receive_message())
+            try:
+                yield await(handle_data(stream, data))
+            except ValidationError as e:
+                yield await(send_error(stream, "VALIDATION", str(e)))
+            except JsonParseError as e:
+                yield await(send_error(stream, "JSON_DECODE", str(e)))
+            except Exception:
+                yield await(send_error(stream, "INTERNAL", "Internal error."))
+                LOG_CURRENT_EXCEPTION()
+    finally:
+        unsubscribe(stream)
+        LOG_NOTE("[{host}]:{port} disconnected.".format(host=host, port=port))
 
 
-@protocol.on_disconnected
-@protocol.on("UNSUBSCRIBE")
-def unsubscribe(stream, _=None):
-    if stream in subscribers:
-        subscribers.remove(stream)
+@async
+def handle_data(stream, data):
+    message = parse_json(data)
+    validate_message(message)
+    message_type = get(message, MESSAGE_TYPE)
+    payload = get(message, PAYLOAD)
+    yield await(handle_message(stream, message_type, payload))
 
 
-@protocol.on("REPLAY")
+@async
+def handle_message(stream, message_type, payload):
+    if message_type == "SUBSCRIBE":
+        subscribe(stream)
+    elif message_type == "UNSUBSCRIBE":
+        unsubscribe(stream)
+    elif message_type == "REPLAY":
+        yield await(replay(stream, payload))
+    else:
+        error_msg = "Command not recognized: {}".format(message_type)
+        yield await(send_error(stream, "UNRECOGNISED_COMMAND", error_msg))
+
+
 @async
 def replay(stream, payload):
     record(field("after", number, optional=True))(payload)
@@ -62,60 +115,25 @@ def replay(stream, payload):
             yield await(send_battle_result(stream, battle_result_record))
 
 
-@protocol.on_unhandled
-@async
-def unknown_command(stream, message_type, _=None):
-    yield await(
-        send_error(
-            stream,
-            "UNRECOGNISED_COMMAND",
-            "Command not recognized: {}".format(message_type),
-        )
-    )
-
-
-@protocol.on_error(ValidationError)
-@async
-def validation_error(stream, exception):
-    yield await(send_error(stream, "VALIDATION", str(exception)))
-
-
-@protocol.on_error(JsonParseError)
-@async
-def json_parse_error(stream, exception):
-    yield await(send_error(stream, "JSON_DECODE", str(exception)))
-
-
-@protocol.on_unhandled_error
-@async
-def generic_error(stream, _=None):
-    yield await(send_error(stream, "INTERNAL", "Internal error."))
-
-
-@protocol.on_connected
-def connected(stream):
-    LOG_NOTE("[{}]:{} connected.".format(*stream.peer_addr))
-
-
-@protocol.on_disconnected
-def disconnected(stream):
-    LOG_NOTE("[{}]:{} disconnected.".format(*stream.peer_addr))
-
-
 @async
 def send_battle_result(stream, result):
-    yield await(
-        send(
-            stream,
-            "BATTLE_RESULT",
-            {"result": result.result, "recordedAt": result.recorded_at},
-        )
-    )
+    payload = {"result": result.result, "recordedAt": result.recorded_at}
+    yield await(send(stream, "BATTLE_RESULT", payload))
 
 
 @async
 def send_error(stream, error_type, error_message):
-    yield await(send(stream, "ERROR", {"type": error_type, "message": error_message}))
+    payload = {"type": error_type, "message": error_message}
+    yield await(send(stream, "ERROR", payload))
+
+
+@async
+def send(message_stream, message_type, payload):
+    # type: (MessageStream, str, Any) -> _Future
+    message = {MESSAGE_TYPE: message_type, PAYLOAD: payload}
+    validate_message(message)
+    data = serialize_to_json(message)
+    yield await(message_stream.send_message(data))
 
 
 keep_running = True
@@ -127,7 +145,7 @@ def init():
 
     LOG_NOTE("Starting server on port {}".format(PORT))
 
-    with Server(websocket_protocol(protocol), PORT) as server:
+    with Server(protocol, PORT) as server:
         while keep_running and not server.closed:
             server.poll()
             yield delay(0)
