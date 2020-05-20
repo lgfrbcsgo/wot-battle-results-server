@@ -3,22 +3,13 @@ from collections import namedtuple
 from typing import Any, List
 
 from async import _Future, async, await
-from debug_utils import LOG_CURRENT_EXCEPTION, LOG_NOTE
+from debug_utils import LOG_NOTE
 from mod_async_server import Server, delay
 from mod_battle_results_server.fetcher import BattleResultsFetcher
-from mod_battle_results_server.util import (
-    JsonParseError,
-    get,
-    parse_json,
-    serialize_to_json,
-)
-from mod_battle_results_server.validation import (
-    ValidationError,
-    field,
-    number,
-    record,
-    string,
-)
+from mod_battle_results_server.util import (JsonParseError, get, parse_json,
+                                            serialize_to_json)
+from mod_battle_results_server.validation import (ValidationError, field,
+                                                  number, record, string)
 from mod_websocket_server import MessageStream, websocket_protocol
 
 PORT = 61942
@@ -74,7 +65,7 @@ def protocol(server, stream):
                 yield await(send_error(stream, "JSON_DECODE", str(e)))
             except Exception:
                 yield await(send_error(stream, "INTERNAL", "Internal error."))
-                LOG_CURRENT_EXCEPTION()
+                raise
     finally:
         unsubscribe(stream)
         LOG_NOTE("[{host}]:{port} disconnected.".format(host=host, port=port))
