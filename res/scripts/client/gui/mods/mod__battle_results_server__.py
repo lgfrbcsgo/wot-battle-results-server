@@ -3,17 +3,17 @@ from debug_utils import LOG_CURRENT_EXCEPTION
 
 def init(*_, **__):
     try:
-        from ModBattleResultsServer import init
+        from mod_battle_results_server import init
 
         init()
-    except:
+    except Exception:
         LOG_CURRENT_EXCEPTION()
 
 
 def fini(*_, **__):
     try:
-        from ModBattleResultsServer import fini
+        from mod_battle_results_server import fini
 
         fini()
-    except:
+    except Exception:
         LOG_CURRENT_EXCEPTION()

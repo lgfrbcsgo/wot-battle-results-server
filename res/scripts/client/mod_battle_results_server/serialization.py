@@ -1,7 +1,7 @@
 from copy import deepcopy
 from enum import Enum
 
-from ModBattleResultsServer.util import get, unset
+from mod_battle_results_server.util import get, unset
 
 
 def serialize_battle_results(results):

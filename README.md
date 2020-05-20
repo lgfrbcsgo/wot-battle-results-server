@@ -42,25 +42,6 @@ Every command and message is a JSON object which contains a `messageType` and `p
     }
     ```
     
--   Allows running multiple commands after each other without any interruptions.
-    Individual commands are allowed to fail.  
-    While the commands are being executed it is guaranteed that no other commands are executed and that no battle results are received.
-    ```json
-    [
-      {
-        "messageType": "REPLAY",
-        "payload": {
-          "after": 1587657932.152
-        }
-      },
-      {
-        "messageType": "SUBSCRIBE",
-        "payload": {
-        }
-      }
-    ]
-    ```
-    
 
 ### Messages
 -   Sent when replaying a battle result or when a new battle result must be pushed to the client.  

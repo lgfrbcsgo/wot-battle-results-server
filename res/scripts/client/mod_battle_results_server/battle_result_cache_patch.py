@@ -1,7 +1,7 @@
 from collections import namedtuple
 
 from adisp import async, process
-from ModBattleResultsServer.util import override
+from mod_battle_results_server.util import override
 from shared_utils.account_helpers.BattleResultsCache import BattleResultsCache
 
 Task = namedtuple("Task", ("async_task", "callback"))
