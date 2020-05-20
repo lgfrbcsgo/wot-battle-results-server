@@ -21,7 +21,7 @@ from mod_battle_results_server.validation import (
 )
 from mod_websocket_server import MessageStream, websocket_protocol
 
-PORT = 61942
+PORT = 15455
 
 BattleResultRecord = namedtuple("BattleResultRecord", ("recorded_at", "result"))
 

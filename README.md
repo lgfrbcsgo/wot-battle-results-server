@@ -1,5 +1,9 @@
 # WoT Battle Results Server
-WoT mod which starts a WebSocket server on `ws://localhost:61942` for serving battle results.
+WoT mod which starts a WebSocket server on `ws://localhost:15455` for serving battle results.
+
+The server has a peer dependency on [WoT Async Server](https://github.com/lgfrbcsgo/wot-async-server) 
+and [WoT Websocket Server](https://github.com/lgfrbcsgo/wot-websocket-server).
+
 
 ## Demo Apps
 [Live WN8](https://lgfrbcsgo.github.io/wot-live-wn8/) ([Source](https://github.com/lgfrbcsgo/wot-live-wn8))
