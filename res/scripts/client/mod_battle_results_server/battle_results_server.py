@@ -3,9 +3,9 @@ import time
 from collections import namedtuple
 from typing import Any, List
 
-from async import _Future, async, await
 from debug_utils import LOG_NOTE
-from mod_async_server import Server, delay
+from mod_async import AsyncResult, async_task, delay
+from mod_async_server import Server
 from mod_battle_results_server.fetcher import BattleResultsFetcher
 from mod_battle_results_server.util import (
     JsonParseError,
@@ -64,51 +64,51 @@ validate_message = record(field(MESSAGE_TYPE, string), field(PAYLOAD, record()))
 
 
 @websocket_protocol(allowed_origins=ORIGIN_WHITELIST)
-@async
+@async_task
 def protocol(server, stream):
-    # type: (Server, MessageStream) -> _Future
+    # type: (Server, MessageStream) -> AsyncResult
     host, port = stream.peer_addr
     LOG_NOTE("[{host}]:{port} connected.".format(host=host, port=port))
     try:
         while True:
-            data = yield await(stream.receive_message())
+            data = yield stream.receive_message()
             try:
-                yield await(handle_data(stream, data))
+                yield handle_data(stream, data)
             except ValidationError as e:
-                yield await(send_error(stream, "VALIDATION", str(e)))
+                yield send_error(stream, "VALIDATION", str(e))
             except JsonParseError as e:
-                yield await(send_error(stream, "JSON_DECODE", str(e)))
+                yield send_error(stream, "JSON_DECODE", str(e))
             except Exception:
-                yield await(send_error(stream, "INTERNAL", "Internal error."))
+                yield send_error(stream, "INTERNAL", "Internal error.")
                 raise
     finally:
         unsubscribe(stream)
         LOG_NOTE("[{host}]:{port} disconnected.".format(host=host, port=port))
 
 
-@async
+@async_task
 def handle_data(stream, data):
     message = parse_json(data)
     validate_message(message)
     message_type = get(message, MESSAGE_TYPE)
     payload = get(message, PAYLOAD)
-    yield await(handle_message(stream, message_type, payload))
+    yield handle_message(stream, message_type, payload)
 
 
-@async
+@async_task
 def handle_message(stream, message_type, payload):
     if message_type == "SUBSCRIBE":
         subscribe(stream)
     elif message_type == "UNSUBSCRIBE":
         unsubscribe(stream)
     elif message_type == "REPLAY":
-        yield await(replay(stream, payload))
+        yield replay(stream, payload)
     else:
         error_msg = "Command not recognized: {}".format(message_type)
-        yield await(send_error(stream, "UNRECOGNISED_COMMAND", error_msg))
+        yield send_error(stream, "UNRECOGNISED_COMMAND", error_msg)
 
 
-@async
+@async_task
 def replay(stream, payload):
     record(field("after", number, optional=True))(payload)
 
@@ -116,36 +116,36 @@ def replay(stream, payload):
     if after is None:
         after = 0
 
-    for battle_result_record in battle_result_records:
+    for battle_result_record in battle_result_records[:]:
         if battle_result_record.recorded_at > after:
-            yield await(send_battle_result(stream, battle_result_record))
+            yield send_battle_result(stream, battle_result_record)
 
 
-@async
+@async_task
 def send_battle_result(stream, result):
     payload = {"result": result.result, "recordedAt": result.recorded_at}
-    yield await(send(stream, "BATTLE_RESULT", payload))
+    yield send(stream, "BATTLE_RESULT", payload)
 
 
-@async
+@async_task
 def send_error(stream, error_type, error_message):
     payload = {"type": error_type, "message": error_message}
-    yield await(send(stream, "ERROR", payload))
+    yield send(stream, "ERROR", payload)
 
 
-@async
+@async_task
 def send(message_stream, message_type, payload):
-    # type: (MessageStream, str, Any) -> _Future
+    # type: (MessageStream, str, Any) -> AsyncResult
     message = {MESSAGE_TYPE: message_type, PAYLOAD: payload}
     validate_message(message)
     data = serialize_to_json(message)
-    yield await(message_stream.send_message(data))
+    yield message_stream.send_message(data)
 
 
 keep_running = True
 
 
-@async
+@async_task
 def init():
     battle_results_fetcher.start()
 
