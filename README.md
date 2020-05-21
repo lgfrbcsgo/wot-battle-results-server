@@ -10,6 +10,13 @@ and [WoT Websocket Server](https://github.com/lgfrbcsgo/wot-websocket-server).
 
 [Live Win Rate](https://lgfrbcsgo.github.io/wot-live-win-rate/) ([Source](https://github.com/lgfrbcsgo/wot-live-win-rate))
 
+## Origin Whitelisting
+Origins need to be whitelisted to protect against malicious websites.
+All `localhost` origins are white listed for local testing.
+ 
+Please open an issue if you want to deploy your app and need your origin to be included in the whitelist.
+
+
 ## Protocol
 The server uses a message protocol which is based on JSON. 
 Every command and message is a JSON object which contains a `messageType` and `payload` property.

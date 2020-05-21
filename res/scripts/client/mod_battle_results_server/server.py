@@ -1,3 +1,4 @@
+import re
 import time
 from collections import namedtuple
 from typing import Any, List
@@ -22,6 +23,11 @@ from mod_battle_results_server.validation import (
 from mod_websocket_server import MessageStream, websocket_protocol
 
 PORT = 15455
+
+ORIGIN_WHITELIST = [
+    re.compile("^https?://localhost(:[0-9]{1,5})?$"),
+    "https://lgfrbcsgo.github.io",
+]
 
 BattleResultRecord = namedtuple("BattleResultRecord", ("recorded_at", "result"))
 
@@ -57,7 +63,7 @@ PAYLOAD = "payload"
 validate_message = record(field(MESSAGE_TYPE, string), field(PAYLOAD, record()))
 
 
-@websocket_protocol
+@websocket_protocol(allowed_origins=ORIGIN_WHITELIST)
 @async
 def protocol(server, stream):
     # type: (Server, MessageStream) -> _Future
