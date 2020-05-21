@@ -1,4 +1,5 @@
-.pyc
-.wotmod
 .idea
-__pycache__
+**/*.pyc
+**/*.wotmod
+**/*.zip
+**/__pycache__
