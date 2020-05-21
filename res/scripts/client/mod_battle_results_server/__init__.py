@@ -1,1 +1,1 @@
-from mod_battle_results_server.server import fini, init
+from mod_battle_results_server.battle_results_server import fini, init
