@@ -12,7 +12,7 @@ def apply_patch():
         yield mutex.acquire()
         try:
             with AsyncResult() as async_result:
-                get(self, arena_unique_id, async_result.resolve)
+                get(self, arena_unique_id, lambda *args: async_result.resolve(args))
 
             return_value = yield async_result
             callback(*return_value)
