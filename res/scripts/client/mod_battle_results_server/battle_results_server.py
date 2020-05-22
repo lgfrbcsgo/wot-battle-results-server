@@ -4,7 +4,8 @@ from collections import namedtuple
 from typing import Any, List
 
 from debug_utils import LOG_NOTE
-from mod_async import AsyncResult, async_task, delay
+from mod_async import AsyncResult, async_task
+from mod_async.utility import delay
 from mod_async_server import Server
 from mod_battle_results_server.fetcher import BattleResultsFetcher
 from mod_battle_results_server.util import (
