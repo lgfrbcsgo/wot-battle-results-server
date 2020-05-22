@@ -1,10 +1,12 @@
-from adisp import process
+from collections import deque
+
 from chat_shared import CHAT_ACTIONS, SYS_MESSAGE_TYPE
 from ChatManager import chatManager
 from debug_utils import LOG_NOTE
 from Event import Event
 from gui.shared.gui_items.processors.common import BattleResultsGetter
 from messenger.proto.bw.wrappers import ServiceChannelMessage
+from mod_async import AsyncResult, async_task
 from mod_battle_results_server.battle_result_cache_patch import apply_patch
 from mod_battle_results_server.serialization import serialize_battle_results
 from mod_battle_results_server.util import get, safe_callback
@@ -19,7 +21,7 @@ class BattleResultsFetcher(object):
         self._stopped = True
         self._account_is_player = False
         self._fetching = False
-        self._queue = []
+        self._queue = deque()
 
     def start(self):
         self._stopped = False
@@ -57,7 +59,7 @@ class BattleResultsFetcher(object):
                 if self._account_is_player:
                     self._fetch_battle_results()
 
-    @process
+    @async_task
     def _fetch_battle_results(self):
         if self._fetching:
             return
@@ -67,10 +69,12 @@ class BattleResultsFetcher(object):
             while (
                 self._account_is_player and not self._stopped and len(self._queue) > 0
             ):
-                arena_unique_id = self._queue.pop()
+                arena_unique_id = self._queue.popleft()
                 if arena_unique_id > 0:
                     LOG_NOTE("Fetching battle result {}".format(arena_unique_id))
-                    response = yield BattleResultsGetter(arena_unique_id).request()
+                    response = yield AsyncResult.from_adisp(
+                        BattleResultsGetter(arena_unique_id).request()
+                    )
                     if response.success:
                         LOG_NOTE("Fetched battle result {}".format(arena_unique_id))
                         battle_result = serialize_battle_results(response.auxData)
