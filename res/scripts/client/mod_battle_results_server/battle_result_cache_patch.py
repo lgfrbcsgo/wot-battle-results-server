@@ -11,10 +11,8 @@ def apply_patch():
     def patched_get(get, self, arena_unique_id, callback):
         yield mutex.acquire()
         try:
-
-            @AsyncResult.executor
-            def async_result(resolve, _):
-                get(self, arena_unique_id, resolve)
+            with AsyncResult() as async_result:
+                get(self, arena_unique_id, async_result.resolve)
 
             return_value = yield async_result
             callback(*return_value)
