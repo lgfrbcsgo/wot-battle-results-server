@@ -1,11 +1,10 @@
 import re
 import time
 from collections import namedtuple
-from typing import Any, List
+from typing import List
 
 from debug_utils import LOG_NOTE
-from mod_async import AsyncResult, async_task
-from mod_async.utility import delay
+from mod_async import async_task, auto_run, delay, run
 from mod_async_server import Server
 from mod_battle_results_server.fetcher import BattleResultsFetcher
 from mod_battle_results_server.util import (
@@ -52,8 +51,7 @@ def log_and_notify_subscribers(battle_result):
     )
     battle_result_records.append(battle_result_record)
     for stream in subscribers:
-        # don't await, send in parallel, we're not in an async context anyways
-        send_battle_result(stream, battle_result_record)
+        run(send_battle_result(stream, battle_result_record))
 
 
 battle_results_fetcher = BattleResultsFetcher()
@@ -67,7 +65,6 @@ validate_message = record(field(MESSAGE_TYPE, string), field(PAYLOAD, record()))
 @websocket_protocol(allowed_origins=ORIGIN_WHITELIST)
 @async_task
 def protocol(server, stream):
-    # type: (Server, MessageStream) -> AsyncResult
     host, port = stream.peer_addr
     LOG_NOTE("[{host}]:{port} connected.".format(host=host, port=port))
     try:
@@ -136,7 +133,6 @@ def send_error(stream, error_type, error_message):
 
 @async_task
 def send(message_stream, message_type, payload):
-    # type: (MessageStream, str, Any) -> AsyncResult
     message = {MESSAGE_TYPE: message_type, PAYLOAD: payload}
     validate_message(message)
     data = serialize_to_json(message)
@@ -146,6 +142,7 @@ def send(message_stream, message_type, payload):
 keep_running = True
 
 
+@auto_run
 @async_task
 def init():
     battle_results_fetcher.start()

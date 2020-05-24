@@ -6,7 +6,7 @@ from debug_utils import LOG_NOTE
 from Event import Event
 from gui.shared.gui_items.processors.common import BattleResultsGetter
 from messenger.proto.bw.wrappers import ServiceChannelMessage
-from mod_async import AsyncResult, async_task
+from mod_async import async_task, auto_run, from_adisp
 from mod_battle_results_server.battle_result_cache_patch import apply_patch
 from mod_battle_results_server.serialization import serialize_battle_results
 from mod_battle_results_server.util import get, safe_callback
@@ -59,6 +59,7 @@ class BattleResultsFetcher(object):
                 if self._account_is_player:
                     self._fetch_battle_results()
 
+    @auto_run
     @async_task
     def _fetch_battle_results(self):
         if self._fetching:
@@ -72,7 +73,7 @@ class BattleResultsFetcher(object):
                 arena_unique_id = self._queue.popleft()
                 if arena_unique_id > 0:
                     LOG_NOTE("Fetching battle result {}".format(arena_unique_id))
-                    response = yield AsyncResult.from_adisp(
+                    response = yield from_adisp(
                         BattleResultsGetter(arena_unique_id).request()
                     )
                     if response.success:
