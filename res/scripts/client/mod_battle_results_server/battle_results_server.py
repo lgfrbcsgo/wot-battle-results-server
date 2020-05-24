@@ -4,7 +4,7 @@ from collections import namedtuple
 from typing import List
 
 from debug_utils import LOG_NOTE
-from mod_async import async_task, auto_run, delay, run
+from mod_async import CallbackCancelled, async_task, auto_run, delay, run
 from mod_async_server import Server
 from mod_battle_results_server.fetcher import BattleResultsFetcher
 from mod_battle_results_server.util import (
@@ -149,12 +149,15 @@ def init():
 
     LOG_NOTE("Starting server on port {}".format(PORT))
 
-    with Server(protocol, PORT) as server:
-        while keep_running and not server.closed:
-            server.poll()
-            yield delay(0)
-
-    LOG_NOTE("Stopped server")
+    try:
+        with Server(protocol, PORT) as server:
+            while keep_running and not server.closed:
+                server.poll()
+                yield delay(0)
+    except CallbackCancelled:
+        pass
+    finally:
+        LOG_NOTE("Stopped server")
 
 
 def fini():
