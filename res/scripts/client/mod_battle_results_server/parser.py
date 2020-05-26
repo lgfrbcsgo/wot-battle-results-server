@@ -86,6 +86,13 @@ class Number(Parser):
         return value
 
 
+class Integer(Parser):
+    def parse(self, value):
+        if not isinstance(value, int) or isinstance(value, bool):
+            raise ParserError("Expected {context} to be an integer.")
+        return value
+
+
 class Object(Parser):
     def __init__(self, value_parser, key_parser=None):
         if key_parser is None:
@@ -145,7 +152,7 @@ class Tuple(Parser):
             zip(self._value_parsers, value)
         ):
             with parser_context("[{}]".format(index)):
-                parsed_value = value_parser(contained_value)
+                parsed_value = value_parser.parse(contained_value)
             parsed_list.append(parsed_value)
 
         return tuple(parsed_list)
@@ -176,7 +183,7 @@ class Record(Parser):
                     )
             contained_value = value[name]
             with parser_context(".{}".format(name)):
-                parsed_value = value_parser(contained_value)
+                parsed_value = value_parser.parse(contained_value)
             parsed_record[name] = parsed_value
 
         return parsed_record
@@ -190,13 +197,13 @@ class OneOf(Parser):
         self._parsers = parsers
 
     def parse(self, value):
-        errors = []
+        errors = set()
         for parser in self._parsers:
             try:
                 with parser_context("{context}"):
                     return parser.parse(value)
             except ParserError as e:
-                errors.append(str(e))
+                errors.add(str(e))
 
         raise ParserError(
             "Expected at least one of these to succeed:\n"

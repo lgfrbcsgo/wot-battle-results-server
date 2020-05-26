@@ -4,23 +4,16 @@ from collections import namedtuple
 from typing import List
 
 from debug_utils import LOG_NOTE
-from mod_async import CallbackCancelled, async_task, auto_run, delay, run
+from mod_async import CallbackCancelled, async_task, auto_run, delay
 from mod_async_server import Server
 from mod_battle_results_server.fetcher import BattleResultsFetcher
-from mod_battle_results_server.parser import (
-    Number,
-    ParserError,
-    Record,
-    String,
-    field,
-    parse,
+from mod_battle_results_server.json_rpc import (
+    Dispatcher,
+    Notification,
+    make_notification,
 )
-from mod_battle_results_server.util import (
-    JsonParseError,
-    get,
-    parse_json,
-    serialize_to_json,
-)
+from mod_battle_results_server.parser import Nullable, Number, Record, field
+from mod_battle_results_server.util import get, serialize_to_json
 from mod_websocket_server import MessageStream, websocket_protocol
 
 PORT = 15455
@@ -36,34 +29,49 @@ subscribers = []  # type: List[MessageStream]
 battle_result_records = []  # type: List[BattleResultRecord]
 
 
-def subscribe(stream):
-    if stream not in subscribers:
-        subscribers.append(stream)
-
-
-def unsubscribe(stream):
-    if stream in subscribers:
-        subscribers.remove(stream)
-
-
 def log_and_notify_subscribers(battle_result):
     battle_result_record = BattleResultRecord(
         recorded_at=time.time(), result=battle_result
     )
     battle_result_records.append(battle_result_record)
     for stream in subscribers:
-        run(send_battle_result(stream, battle_result_record))
+        notify(
+            stream, "receive_battle_result", make_battle_result(battle_result_record)
+        )
 
 
 battle_results_fetcher = BattleResultsFetcher()
 battle_results_fetcher.battle_result_fetched += log_and_notify_subscribers
 
-MESSAGE_TYPE = "messageType"
-PAYLOAD = "payload"
+
+dispatcher = Dispatcher()
 
 
-def validate_message(message):
-    parse(Record(field(MESSAGE_TYPE, String()), field(PAYLOAD, Record())), message)
+@dispatcher.method()
+def subscribe(params, stream, **context):
+    if stream not in subscribers:
+        subscribers.append(stream)
+
+
+@dispatcher.method()
+def unsubscribe(params, stream, **context):
+    if stream in subscribers:
+        subscribers.remove(stream)
+
+
+@dispatcher.method(
+    param_parser=Nullable(Record(field("after", Number(), optional=True)))
+)
+def replay(params, **context):
+    after = get(params, "after")
+    if after is None:
+        after = 0
+
+    return [
+        make_battle_result(result)
+        for result in battle_result_records
+        if result.recorded_at > after
+    ]
 
 
 @websocket_protocol(allowed_origins=ORIGIN_WHITELIST)
@@ -74,73 +82,24 @@ def protocol(server, stream):
     try:
         while True:
             data = yield stream.receive_message()
-            try:
-                yield handle_data(stream, data)
-            except ParserError as e:
-                yield send_error(stream, "VALIDATION", str(e))
-            except JsonParseError as e:
-                yield send_error(stream, "JSON_DECODE", str(e))
-            except Exception:
-                yield send_error(stream, "INTERNAL", "Internal error.")
-                raise
+            response = dispatcher(data, stream=stream)
+            if response:
+                yield stream.send_message(response)
     finally:
-        unsubscribe(stream)
+        unsubscribe(None, stream)
         LOG_NOTE("[{host}]:{port} disconnected.".format(host=host, port=port))
 
 
+def make_battle_result(result):
+    return {"result": result.result, "recordedAt": result.recorded_at}
+
+
+@auto_run
 @async_task
-def handle_data(stream, data):
-    message = parse_json(data)
-    validate_message(message)
-    message_type = get(message, MESSAGE_TYPE)
-    payload = get(message, PAYLOAD)
-    yield handle_message(stream, message_type, payload)
-
-
-@async_task
-def handle_message(stream, message_type, payload):
-    if message_type == "SUBSCRIBE":
-        subscribe(stream)
-    elif message_type == "UNSUBSCRIBE":
-        unsubscribe(stream)
-    elif message_type == "REPLAY":
-        yield replay(stream, payload)
-    else:
-        error_msg = "Command not recognized: {}".format(message_type)
-        yield send_error(stream, "UNRECOGNISED_COMMAND", error_msg)
-
-
-@async_task
-def replay(stream, payload):
-    parse(Record(field("after", Number(), optional=True)), payload)
-
-    after = get(payload, "after")
-    if after is None:
-        after = 0
-
-    for battle_result_record in battle_result_records[:]:
-        if battle_result_record.recorded_at > after:
-            yield send_battle_result(stream, battle_result_record)
-
-
-@async_task
-def send_battle_result(stream, result):
-    payload = {"result": result.result, "recordedAt": result.recorded_at}
-    yield send(stream, "BATTLE_RESULT", payload)
-
-
-@async_task
-def send_error(stream, error_type, error_message):
-    payload = {"type": error_type, "message": error_message}
-    yield send(stream, "ERROR", payload)
-
-
-@async_task
-def send(message_stream, message_type, payload):
-    message = {MESSAGE_TYPE: message_type, PAYLOAD: payload}
-    validate_message(message)
-    data = serialize_to_json(message)
-    yield message_stream.send_message(data)
+def notify(stream, method, params):
+    notification = make_notification(Notification(method, params))
+    data = serialize_to_json(notification)
+    yield stream.send_message(data)
 
 
 keep_running = True
