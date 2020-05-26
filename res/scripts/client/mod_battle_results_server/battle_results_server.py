@@ -7,18 +7,19 @@ from debug_utils import LOG_NOTE
 from mod_async import CallbackCancelled, async_task, auto_run, delay, run
 from mod_async_server import Server
 from mod_battle_results_server.fetcher import BattleResultsFetcher
+from mod_battle_results_server.parser import (
+    Number,
+    ParserError,
+    Record,
+    String,
+    field,
+    parser_context,
+)
 from mod_battle_results_server.util import (
     JsonParseError,
     get,
     parse_json,
     serialize_to_json,
-)
-from mod_battle_results_server.validation import (
-    ValidationError,
-    field,
-    number,
-    record,
-    string,
 )
 from mod_websocket_server import MessageStream, websocket_protocol
 
@@ -59,7 +60,11 @@ battle_results_fetcher.battle_result_fetched += log_and_notify_subscribers
 
 MESSAGE_TYPE = "messageType"
 PAYLOAD = "payload"
-validate_message = record(field(MESSAGE_TYPE, string), field(PAYLOAD, record()))
+
+
+def validate_message(message):
+    with parser_context("$"):
+        Record(field(MESSAGE_TYPE, String()), field(PAYLOAD, Record())).parse(message)
 
 
 @websocket_protocol(allowed_origins=ORIGIN_WHITELIST)
@@ -72,7 +77,7 @@ def protocol(server, stream):
             data = yield stream.receive_message()
             try:
                 yield handle_data(stream, data)
-            except ValidationError as e:
+            except ParserError as e:
                 yield send_error(stream, "VALIDATION", str(e))
             except JsonParseError as e:
                 yield send_error(stream, "JSON_DECODE", str(e))
@@ -108,7 +113,8 @@ def handle_message(stream, message_type, payload):
 
 @async_task
 def replay(stream, payload):
-    record(field("after", number, optional=True))(payload)
+    with parser_context("payload"):
+        Record(field("after", Number(), optional=True)).parse(payload)
 
     after = get(payload, "after")
     if after is None:
