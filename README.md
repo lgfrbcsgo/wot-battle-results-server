@@ -65,7 +65,7 @@ Unsubscribes this client from the feed of battle results.
 Sends all recorded battle results of the current gaming session to the client.
 
 **Params**
-> `after`: optional timestamp to only replay battle results after the given timestamp. Can be omitted.
+ - `after`: optional timestamp to only replay battle results after the given timestamp. Can be omitted.
 
 **Request**
 ```json
