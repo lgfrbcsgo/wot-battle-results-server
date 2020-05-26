@@ -28,14 +28,16 @@ class Any(Parser):
         return value
 
 
-class Literal(Parser):
+class StringLiteral(Parser):
     def __init__(self, value):
+        if not isinstance(value, (str, unicode)):
+            raise TypeError("Expected a string.")
         self._value = value
 
     def parse(self, value):
         if self._value != value:
             raise ParserError(
-                "Expected {{context}} to equal {expected_value}.".format(
+                "Expected {{context}} to be '{expected_value}'.".format(
                     expected_value=self._value
                 )
             )
@@ -51,6 +53,20 @@ class Fail(Parser):
         raise ParserError(self._message_format)
 
 
+class Null(Parser):
+    def parse(self, value):
+        if value is not None:
+            raise ParserError("Expected {context} to be null.")
+        return None
+
+
+class Boolean(Parser):
+    def parse(self, value):
+        if not isinstance(value, bool):
+            raise ParserError("Expected {context} to be a boolean.")
+        return value
+
+
 class String(Parser):
     def parse(self, value):
         if not isinstance(value, (str, unicode)):
@@ -60,7 +76,7 @@ class String(Parser):
 
 class Number(Parser):
     def parse(self, value):
-        if not isinstance(value, (int, long, float)):
+        if not isinstance(value, (int, long, float)) or isinstance(value, bool):
             raise ParserError("Expected {context} to be a number.")
         return value
 
@@ -161,17 +177,6 @@ class Record(Parser):
         return parsed_record
 
 
-class Nullable(Parser):
-    def __init__(self, value_parser):
-        self._value_parser = value_parser
-
-    def parse(self, value):
-        if value is not None:
-            return self._value_parser(value)
-
-        return None
-
-
 class OneOf(Parser):
     def __init__(self, *parsers):
         if len(parsers) == 0:
@@ -192,3 +197,8 @@ class OneOf(Parser):
             "Expected at least one of these to succeed:\n"
             + "\n".join(" - " + error for error in errors)
         )
+
+
+class Nullable(OneOf):
+    def __init__(self, value_parser):
+        super(Nullable, self).__init__(Null(), value_parser)
