@@ -23,6 +23,11 @@ def parser_context(context):
         raise ParserError(e.message_format, (context,) + e.context)
 
 
+def parse(parser, value, context="$"):
+    with parser_context(context):
+        return parser.parse(value)
+
+
 class Any(Parser):
     def parse(self, value):
         return value

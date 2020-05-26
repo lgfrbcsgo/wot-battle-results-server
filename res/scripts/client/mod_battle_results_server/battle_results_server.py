@@ -13,7 +13,7 @@ from mod_battle_results_server.parser import (
     Record,
     String,
     field,
-    parser_context,
+    parse,
 )
 from mod_battle_results_server.util import (
     JsonParseError,
@@ -63,8 +63,7 @@ PAYLOAD = "payload"
 
 
 def validate_message(message):
-    with parser_context("$"):
-        Record(field(MESSAGE_TYPE, String()), field(PAYLOAD, Record())).parse(message)
+    parse(Record(field(MESSAGE_TYPE, String()), field(PAYLOAD, Record())), message)
 
 
 @websocket_protocol(allowed_origins=ORIGIN_WHITELIST)
@@ -113,8 +112,7 @@ def handle_message(stream, message_type, payload):
 
 @async_task
 def replay(stream, payload):
-    with parser_context("payload"):
-        Record(field("after", Number(), optional=True)).parse(payload)
+    parse(Record(field("after", Number(), optional=True)), payload)
 
     after = get(payload, "after")
     if after is None:
