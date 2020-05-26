@@ -142,7 +142,7 @@ class Tuple(Parser):
 
         parsed_list = []
         for index, (value_parser, contained_value) in enumerate(
-                zip(self._value_parsers, value)
+            zip(self._value_parsers, value)
         ):
             with parser_context("[{}]".format(index)):
                 parsed_value = value_parser(contained_value)
