@@ -1,5 +1,6 @@
 from collections import namedtuple
 
+from debug_utils import LOG_CURRENT_EXCEPTION
 from mod_battle_results_server.parser import (
     Any,
     Fail,
@@ -206,6 +207,7 @@ class Dispatcher(object):
                 SuccessResponse(handler(params, **context), request_id)
             )
         except Exception:
+            LOG_CURRENT_EXCEPTION()
             return make_error_response(
                 ErrorResponse(-32603, "Internal error", None, request_id)
             )

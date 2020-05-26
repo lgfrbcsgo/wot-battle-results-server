@@ -23,7 +23,7 @@ ORIGIN_WHITELIST = [
     "https://lgfrbcsgo.github.io",
 ]
 
-BattleResultRecord = namedtuple("BattleResultRecord", ("recorded_at", "result"))
+BattleResultRecord = namedtuple("BattleResultRecord", ("timestamp", "battle_result"))
 
 subscribers = []  # type: List[MessageStream]
 battle_result_records = []  # type: List[BattleResultRecord]
@@ -31,12 +31,17 @@ battle_result_records = []  # type: List[BattleResultRecord]
 
 def log_and_notify_subscribers(battle_result):
     battle_result_record = BattleResultRecord(
-        recorded_at=time.time(), result=battle_result
+        timestamp=time.time(), battle_result=battle_result
     )
     battle_result_records.append(battle_result_record)
     for stream in subscribers:
         notify(
-            stream, "receive_battle_result", make_battle_result(battle_result_record)
+            stream,
+            "subscription",
+            {
+                "battleResult": battle_result_record.battle_result,
+                "timestamp": battle_result_record.timestamp,
+            },
         )
 
 
@@ -62,16 +67,19 @@ def unsubscribe(params, stream, **context):
 @dispatcher.method(
     param_parser=Nullable(Record(field("after", Number(), optional=True)))
 )
-def replay(params, **context):
+def get_battle_results(params, **context):
     after = get(params, "after")
     if after is None:
         after = 0
 
-    return [
-        make_battle_result(result)
-        for result in battle_result_records
-        if result.recorded_at > after
-    ]
+    found = [record for record in battle_result_records if record.timestamp > after]
+    start = min([record.timestamp for record in found]) if found else after
+    end = max([record.timestamp for record in found]) if found else after
+    return {
+        "start": start,
+        "end": end,
+        "battleResults": [record.battle_result for record in found],
+    }
 
 
 @websocket_protocol(allowed_origins=ORIGIN_WHITELIST)
