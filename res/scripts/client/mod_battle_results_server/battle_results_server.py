@@ -31,50 +31,43 @@ battle_result_records = []  # type: List[BattleResultRecord]
 
 def log_and_notify_subscribers(battle_result):
     battle_result_record = BattleResultRecord(
-        timestamp=time.time(), battle_result=battle_result
+        timestamp=int(time.time()), battle_result=battle_result
     )
+
     battle_result_records.append(battle_result_record)
+
+    params = {
+        "battleResult": battle_result_record.battle_result,
+        "timestamp": battle_result_record.timestamp,
+    }
+
     for stream in subscribers:
-        notify(
-            stream,
-            "subscription",
-            {
-                "battleResult": battle_result_record.battle_result,
-                "timestamp": battle_result_record.timestamp,
-            },
-        )
+        notify(stream, "subscription", params)
 
 
 battle_results_fetcher = BattleResultsFetcher()
 battle_results_fetcher.battle_result_fetched += log_and_notify_subscribers
 
 
-dispatcher = Dispatcher()
-
-
-@dispatcher.method()
-def subscribe(params, stream, **context):
+def subscribe(stream):
     if stream not in subscribers:
         subscribers.append(stream)
 
 
-@dispatcher.method()
-def unsubscribe(params, stream, **context):
+def unsubscribe(stream):
     if stream in subscribers:
         subscribers.remove(stream)
 
 
-@dispatcher.method(
-    param_parser=Nullable(Record(field("after", Number(), optional=True)))
-)
-def get_battle_results(params, **context):
+def get_battle_results(params):
     after = get(params, "after")
     if after is None:
         after = 0
 
     found = [record for record in battle_result_records if record.timestamp > after]
-    start = min([record.timestamp for record in found]) if found else after
-    end = max([record.timestamp for record in found]) if found else after
+    start = after if not found else min([record.timestamp for record in found])
+    end = after if not found else max([record.timestamp for record in found])
+
     return {
         "start": start,
         "end": end,
@@ -87,28 +80,36 @@ def get_battle_results(params, **context):
 def protocol(server, stream):
     host, port = stream.peer_addr
     origin = stream.handshake_headers["origin"]
+
     LOG_NOTE(
         "{origin} ([{host}]:{port}) connected.".format(
             origin=origin, host=host, port=port
         )
     )
+
+    dispatcher = Dispatcher()
+    dispatcher.add_method(subscribe.__name__, lambda _: subscribe(stream))
+    dispatcher.add_method(unsubscribe.__name__, lambda _: unsubscribe(stream))
+    dispatcher.add_method(
+        get_battle_results.__name__,
+        get_battle_results,
+        param_parser=Nullable(Record(field("after", Number(), optional=True))),
+    )
+
     try:
         while True:
             data = yield stream.receive_message()
-            response = dispatcher(data, stream=stream)
+            response = dispatcher(data)
             if response:
                 yield stream.send_message(response)
     finally:
-        unsubscribe(None, stream)
+        unsubscribe(stream)
+
         LOG_NOTE(
             "{origin} ([{host}]:{port}) disconnected.".format(
                 origin=origin, host=host, port=port
             )
         )
-
-
-def make_battle_result(result):
-    return {"result": result.result, "recordedAt": result.recorded_at}
 
 
 @auto_run
@@ -122,11 +123,14 @@ def notify(stream, method, params):
 keep_running = True
 
 
+def close_server():
+    global keep_running
+    keep_running = False
+
+
 @auto_run
 @async_task
-def init():
-    battle_results_fetcher.start()
-
+def serve():
     LOG_NOTE("Starting server on port {}".format(PORT))
 
     try:
@@ -140,7 +144,11 @@ def init():
         LOG_NOTE("Stopped server")
 
 
+def init():
+    battle_results_fetcher.start()
+    serve()
+
+
 def fini():
-    global keep_running
-    keep_running = False
     battle_results_fetcher.stop()
+    close_server()

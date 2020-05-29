@@ -4,7 +4,6 @@ from debug_utils import LOG_CURRENT_EXCEPTION
 from mod_battle_results_server.parser import (
     Any,
     Fail,
-    Integer,
     Null,
     Number,
     OneOf,
@@ -42,14 +41,6 @@ class NotificationParser(Record):
         return Notification(method=get(parsed, "method"), params=get(parsed, "params"))
 
 
-def make_notification(notification):
-    return {
-        "jsonrpc": "2.0",
-        "method": notification.method,
-        "params": notification.params,
-    }
-
-
 class RequestParser(Record):
     def __init__(self):
         super(RequestParser, self).__init__(
@@ -68,55 +59,19 @@ class RequestParser(Record):
         )
 
 
-def make_request(request):
+request_parser = OneOf(RequestParser(), NotificationParser())
+
+
+def make_notification(notification):
     return {
         "jsonrpc": "2.0",
-        "method": request.method,
-        "params": request.params,
-        "id": request.id,
+        "method": notification.method,
+        "params": notification.params,
     }
-
-
-class SuccessResponseParser(Record):
-    def __init__(self):
-        super(SuccessResponseParser, self).__init__(
-            field("jsonrpc", StringLiteral("2.0")),
-            field("result", Any()),
-            field("id", OneOf(String(), Number(), Null())),
-        )
-
-    def parse(self, value):
-        parsed = super(SuccessResponseParser, self).parse(value)
-        return SuccessResponse(result=get(parsed, "result"), id=get(parsed, "id"))
 
 
 def make_success_response(response):
     return {"jsonrpc": "2.0", "result": response.result, "id": response.id}
-
-
-class ErrorResponseParser(Record):
-    def __init__(self):
-        super(ErrorResponseParser, self).__init__(
-            field("jsonrpc", StringLiteral("2.0")),
-            field(
-                "error",
-                Record(
-                    field("code", Integer()),
-                    field("message", String()),
-                    field("data", Any(), optional=True),
-                ),
-            ),
-            field("id", OneOf(String(), Number(), Null())),
-        )
-
-    def parse(self, value):
-        parsed = super(ErrorResponseParser, self).parse(value)
-        return ErrorResponse(
-            code=get(parsed, "error", "code"),
-            message=get(parsed, "error", "message"),
-            data=get(parsed, "error", "data"),
-            id=get(parsed, "id"),
-        )
 
 
 def make_error_response(response):
@@ -131,47 +86,39 @@ def make_error_response(response):
     }
 
 
-request_parser = OneOf(RequestParser(), NotificationParser())
-response_parser = OneOf(SuccessResponseParser(), ErrorResponseParser())
-
-
 class Dispatcher(object):
     def __init__(self):
         self._handlers = dict()
 
-    def __call__(self, data, **context):
+    def __call__(self, data):
         try:
             json = parse_json(data)
         except JsonParseError as e:
             response = ErrorResponse(-32700, "Parse error", str(e), None)
             return serialize_to_json(make_error_response(response))
         else:
-            response = self._handle(json, context)
+            response = self._handle(json)
             if response:
                 return serialize_to_json(response)
             return None
 
-    def method(self, param_parser=Any()):
-        def decorator(func):
-            self._handlers[func.__name__] = (func, param_parser)
-            return func
+    def add_method(self, name, handler, param_parser=Any()):
+        self._handlers[name] = (handler, param_parser)
 
-        return decorator
-
-    def _handle(self, json, context):
+    def _handle(self, json):
         if isinstance(json, list):
-            return self._handle_batch(json, context)
+            return self._handle_batch(json)
         else:
-            return self._handle_single(json, context)
+            return self._handle_single(json)
 
-    def _handle_batch(self, batch, context):
-        responses = [self._handle_single(single, context) for single in batch]
+    def _handle_batch(self, batch):
+        responses = [self._handle_single(single) for single in batch]
         filtered = [response for response in responses if response is not None]
         if len(filtered) > 0:
             return filtered
         return None
 
-    def _handle_single(self, single, context):
+    def _handle_single(self, single):
         try:
             request = parse(request_parser, single)
         except ParserError as e:
@@ -180,14 +127,12 @@ class Dispatcher(object):
             )
         else:
             if isinstance(request, Request):
-                return self._handle_request(
-                    request.method, request.params, request.id, context
-                )
+                return self._handle_request(request.method, request.params, request.id)
             else:
-                self._handle_request(request.method, request.params, None, context)
+                self._handle_request(request.method, request.params, None)
                 return None
 
-    def _handle_request(self, method, params, request_id, context):
+    def _handle_request(self, method, params, request_id):
         try:
             handler, param_parser = self._handlers[method]
         except KeyError:
@@ -203,9 +148,7 @@ class Dispatcher(object):
             )
 
         try:
-            return make_success_response(
-                SuccessResponse(handler(params, **context), request_id)
-            )
+            return make_success_response(SuccessResponse(handler(params), request_id))
         except Exception:
             LOG_CURRENT_EXCEPTION()
             return make_error_response(
