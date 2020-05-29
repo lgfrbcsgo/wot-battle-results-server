@@ -1,11 +1,10 @@
 from collections import deque
 
-from chat_shared import CHAT_ACTIONS, SYS_MESSAGE_TYPE
-from ChatManager import chatManager
+from chat_shared import SYS_MESSAGE_TYPE
 from debug_utils import LOG_NOTE
 from Event import Event
 from gui.shared.gui_items.processors.common import BattleResultsGetter
-from messenger.proto.bw.wrappers import ServiceChannelMessage
+from messenger.proto.events import g_messengerEvents
 from mod_async import async_task, auto_run, from_adisp
 from mod_battle_results_server.battle_result_cache_patch import apply_patch
 from mod_battle_results_server.serialization import serialize_battle_results
@@ -27,17 +26,13 @@ class BattleResultsFetcher(object):
         self._stopped = False
         g_playerEvents.onAccountBecomePlayer += self._on_account_become_player
         g_playerEvents.onAccountBecomeNonPlayer += self._on_account_become_non_player
-        chatManager.subscribeChatAction(
-            self._on_personal_sys_message, CHAT_ACTIONS.personalSysMessage
-        )
+        g_messengerEvents.serviceChannel.onChatMessageReceived += self._on_sys_message
 
     def stop(self):
         self._stopped = True
         g_playerEvents.onAccountBecomePlayer -= self._on_account_become_player
         g_playerEvents.onAccountBecomeNonPlayer -= self._on_account_become_non_player
-        chatManager.unsubscribeChatAction(
-            self._on_personal_sys_message, CHAT_ACTIONS.personalSysMessage
-        )
+        g_messengerEvents.serviceChannel.onChatMessageReceived -= self._on_sys_message
 
     @safe_callback
     def _on_account_become_player(self, *_, **__):
@@ -49,8 +44,7 @@ class BattleResultsFetcher(object):
         self._account_is_player = False
 
     @safe_callback
-    def _on_personal_sys_message(self, chat_action, *_, **__):
-        message = ServiceChannelMessage.fromChatAction(chat_action, personal=True)
+    def _on_sys_message(self, _, message, *__, **___):
         if message.type == SYS_MESSAGE_TYPE.battleResults.index():
             arena_unique_id = get(message.data, "arenaUniqueID")
             if arena_unique_id is not None:
