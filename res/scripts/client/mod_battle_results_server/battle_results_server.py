@@ -86,7 +86,12 @@ def get_battle_results(params, **context):
 @async_task
 def protocol(server, stream):
     host, port = stream.peer_addr
-    LOG_NOTE("[{host}]:{port} connected.".format(host=host, port=port))
+    origin = stream.handshake_headers["origin"]
+    LOG_NOTE(
+        "{origin} ([{host}]:{port}) connected.".format(
+            origin=origin, host=host, port=port
+        )
+    )
     try:
         while True:
             data = yield stream.receive_message()
@@ -95,7 +100,11 @@ def protocol(server, stream):
                 yield stream.send_message(response)
     finally:
         unsubscribe(None, stream)
-        LOG_NOTE("[{host}]:{port} disconnected.".format(host=host, port=port))
+        LOG_NOTE(
+            "{origin} ([{host}]:{port}) disconnected.".format(
+                origin=origin, host=host, port=port
+            )
+        )
 
 
 def make_battle_result(result):
