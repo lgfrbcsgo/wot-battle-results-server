@@ -73,7 +73,7 @@ Sends all recorded battle results of the current gaming session to the client.
   "jsonrpc": "2.0",
   "method": "get_battle_results",
   "params": {
-    "after": 1587657932.152
+    "after": 1587657932
   },
   "id": 42
 }
@@ -84,8 +84,8 @@ Sends all recorded battle results of the current gaming session to the client.
 {
   "jsonrpc": "2.0",
   "result": {
-    "start": 1587657932.152,
-    "end": 1587659370.451,
+    "start": 1587657932,
+    "end": 1587659370,
     "battleResults": [ /* ... */ ]
   },
   "id": 42
@@ -99,7 +99,7 @@ Sent **from the server** when a new battle result has been received.
   "jsonrpc": "2.0",
   "method": "subscription",
   "params": {
-    "timestamp": 1587657932.152,
+    "timestamp": 1587657932,
     "battleResult": { /* ... */ }
   }
 }
