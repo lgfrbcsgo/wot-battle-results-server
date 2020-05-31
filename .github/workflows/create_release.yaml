@@ -26,10 +26,12 @@ jobs:
         release_name: Release ${{ steps.build_release.outputs.version }}
         body: |
           ## WoT Version
+
           ## Changelog
+          -
           ## Downloads
           - `${{ steps.build_release.outputs.release_name }}`: Mod with its dependencies (recommended)
-          - `${{ steps.build_release.outputs.wotmod_name }}`: Single `.wotmod` file. Dependecies need to downloaded separately.
+          - `${{ steps.build_release.outputs.wotmod_name }}`: Single `.wotmod` file. Dependecies need to be downloaded separately.
 
     - name: Upload Release Asset (wotmod)
       uses: actions/upload-release-asset@v1
