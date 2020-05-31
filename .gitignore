@@ -1,5 +1,6 @@
 .idea
+build
+dist
 **/*.pyc
 **/*.wotmod
-**/*.zip
 **/__pycache__

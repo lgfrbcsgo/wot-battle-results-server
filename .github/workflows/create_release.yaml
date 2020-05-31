@@ -1,0 +1,52 @@
+name: Create release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+\.[0-9]+\.[0-9]+'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build Release
+      id: build_release
+      run: make gh-actions-release
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ steps.build_release.outputs.version }}
+        body: |
+          ## WoT Version
+          ## Changelog
+          ## Downloads
+          - `${{ steps.build_release.outputs.release_name }}`: Mod with its dependencies (recommended)
+          - `${{ steps.build_release.outputs.wotmod_name }}`: Single `.wotmod` file. Dependecies need to downloaded separately.
+
+    - name: Upload Release Asset (wotmod)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/${{ steps.build_release.outputs.wotmod_name }}
+        asset_name: ${{ steps.build_release.outputs.wotmod_name }}
+        asset_content_type: application/zip
+
+    - name: Upload Release Asset (zip)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/${{ steps.build_release.outputs.release_name }}
+        asset_name: ${{ steps.build_release.outputs.release_name }}
+        asset_content_type: application/zip
