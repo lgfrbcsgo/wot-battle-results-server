@@ -31,7 +31,7 @@ wotmod: copy-wotmod-content
 release: wotmod
 	mkdir -p dist/release
 	cp dist/$(WOTMOD_NAME) dist/release
-	cd dist/release; cat ../../dependencies | while read -r line; do wget $$line; done
+	wget -i dependencies -P dist/release
 	cd dist/release; 7z a -mx=0 -tzip ../$(RELEASE_NAME) .
 
 gh-actions-release: release
