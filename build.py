@@ -16,11 +16,6 @@ SOURCES = [
     "mod_battle_results_server",
 ]
 
-RESOURCES = [
-    ("LICENSE", "."),
-    ("README.md", "."),
-]
-
 RELEASE_DEPENDENCIES = [
     "https://github.com/lgfrbcsgo/wot-async/releases/download/v0.1.3/lgfrbcsgo.async_0.1.3.wotmod",
     "https://github.com/lgfrbcsgo/wot-async-server/releases/download/v0.2.2/lgfrbcsgo.async-server_0.2.2.wotmod",
@@ -38,8 +33,9 @@ def wotmod():
     # clean dist directory
     subprocess.check_call(["rm", "-rf", "dist/wotmod"])
 
-    # make source directory
     source_dst = "dist/wotmod/unpacked/res/scripts/client"
+
+    # make source directory
     subprocess.check_call(["mkdir", "-p", source_dst])
 
     # copy sources
@@ -49,15 +45,14 @@ def wotmod():
     # compile sources
     subprocess.check_call(["python2.7", "-m", "compileall", source_dst])
 
-    # copy resources
     unpacked_dst = "dist/wotmod/unpacked"
-    for src, dst in RESOURCES:
-        dst = path.join(unpacked_dst, dst)
-        subprocess.check_call(["mkdir", "-p", path.dirname(dst)])
-        subprocess.check_call(["cp", "-r", src, dst])
+
+    # copy license and readme
+    subprocess.check_call(["cp", "-r", "LICENSE", unpacked_dst])
+    subprocess.check_call(["cp", "-r", "README.md", unpacked_dst])
 
     # create meta.xml content
-    meta_xml = """
+    metadata = """
 <root>
     <id>{id}</id>
     <version>{version}</version>
@@ -70,7 +65,7 @@ def wotmod():
 
     # write meta.xml
     with open("dist/wotmod/unpacked/meta.xml", "w") as meta_file:
-        meta_file.write(meta_xml.strip())
+        meta_file.write(metadata.strip())
 
     # create wotmod file
     wotmod_dst = path.join("dist/wotmod", get_wotmod_name())
