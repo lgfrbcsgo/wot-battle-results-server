@@ -19,7 +19,7 @@ jobs:
 
     - name: Build Release
       id: build_release
-      run: pynt github_actions_release
+      run: python build.py github_actions_release
 
     - name: Create Release
       id: create_release
