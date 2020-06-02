@@ -13,7 +13,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Install pynt
-      run: pip install pynt
+      run: pip install setuptools wheel pynt
 
     - name: Build Release
       id: build_release
