@@ -39,7 +39,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/${{ steps.build_release.outputs.wotmod_name }}
+        asset_path: ${{ steps.build_release.outputs.wotmod_path }}
         asset_name: ${{ steps.build_release.outputs.wotmod_name }}
         asset_content_type: application/zip
 
@@ -49,6 +49,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/${{ steps.build_release.outputs.release_name }}
+        asset_path: ${{ steps.build_release.outputs.release_path }}
         asset_name: ${{ steps.build_release.outputs.release_name }}
         asset_content_type: application/zip
