@@ -21,6 +21,15 @@ Please open an issue if you want to deploy your app and need your origin to be i
 ## Protocol
 The server uses a protocol which is based on [JSON-RPC 2.0](https://www.jsonrpc.org/specification).
 
+**Guarantees:**
+- Responses will be sent in the order in which the requests were sent.
+- Requests are processed atomically. This is also true for batch requests. 
+  I.e. while your request is being processed, no other request from any client is handled.
+  Also, no notifications will be sent.
+- The individual responses of a batch response will have the same order as the individual requests of 
+  the corresponding batch request.
+- Notifications are not sent in batches.
+
 ### `subscribe`
 Subscribes this client to the feed of battle results.
 
