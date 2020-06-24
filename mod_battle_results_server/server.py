@@ -42,6 +42,14 @@ class BattleResultsServer(object):
         self._fetcher = BattleResultsFetcher()
         self._fetcher.battle_result_fetched += self._handle_battle_result
 
+    def _subscribe(self, stream):
+        if stream not in self._subscribers:
+            self._subscribers.append(stream)
+
+    def _unsubscribe(self, stream):
+        if stream in self._subscribers:
+            self._subscribers.remove(stream)
+
     def _handle_battle_result(self, battle_result):
         record = BattleResultRecord(
             timestamp=int(time.time()), battle_result=battle_result
@@ -57,15 +65,7 @@ class BattleResultsServer(object):
         for stream in self._subscribers:
             notify(stream, "subscription", params)
 
-    def _subscribe(self, stream):
-        if stream not in self._subscribers:
-            self._subscribers.append(stream)
-
-    def _unsubscribe(self, stream):
-        if stream in self._subscribers:
-            self._subscribers.remove(stream)
-
-    def _get_battle_results(self, after):
+    def _handle_get_battle_results(self, after):
         found = [record for record in self._records if record.timestamp > after]
         start = after if not found else min([record.timestamp for record in found])
         end = after if not found else max([record.timestamp for record in found])
@@ -95,7 +95,7 @@ class BattleResultsServer(object):
             if after is None:
                 after = 0
 
-            return self._get_battle_results(after)
+            return self._handle_get_battle_results(after)
 
         return dispatcher
 
