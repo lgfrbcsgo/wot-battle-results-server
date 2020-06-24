@@ -90,7 +90,7 @@ class BattleResultsServer(object):
         @dispatcher.add_method(
             Nullable(Record(field("after", Number(), optional=True)))
         )
-        def handle_get_battle_results(params):
+        def get_battle_results(params):
             after = get(params, "after")
             if after is None:
                 after = 0
