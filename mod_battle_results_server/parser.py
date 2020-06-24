@@ -1,35 +1,18 @@
-from contextlib import contextmanager
-
-
 class Parser(object):
-    def parse(self, value):
+    def parse(self, path, value):
         raise NotImplementedError()
 
 
 class ParserError(Exception):
-    def __init__(self, message_format, context=()):
-        self.message_format = message_format
-        self.context = context
-        super(ParserError, self).__init__(
-            message_format.format(context="".join(context))
-        )
-
-
-@contextmanager
-def parser_context(context):
-    try:
-        yield
-    except ParserError as e:
-        raise ParserError(e.message_format, (context,) + e.context)
+    pass
 
 
 def parse(parser, value, context="$"):
-    with parser_context(context):
-        return parser.parse(value)
+    return parser.parse(context, value)
 
 
 class Any(Parser):
-    def parse(self, value):
+    def parse(self, _, value):
         return value
 
 
@@ -39,11 +22,11 @@ class StringLiteral(Parser):
             raise TypeError("Expected a string.")
         self._value = value
 
-    def parse(self, value):
+    def parse(self, path, value):
         if self._value != value:
             raise ParserError(
-                "Expected {{context}} to be '{expected_value}'.".format(
-                    expected_value=self._value
+                "Expected {path} to be '{expected_value}'.".format(
+                    expected_value=self._value, path=path,
                 )
             )
 
@@ -51,65 +34,69 @@ class StringLiteral(Parser):
 
 
 class Fail(Parser):
-    def __init__(self, message_format):
-        self._message_format = message_format
+    def __init__(self, message):
+        self._message = message
 
-    def parse(self, value):
-        raise ParserError(self._message_format)
+    def parse(self, path, value):
+        raise ParserError(
+            "Expectation failed at {path}: {message}".format(
+                path=path, message=self._message
+            )
+        )
 
 
 class Null(Parser):
-    def parse(self, value):
+    def parse(self, path, value):
         if value is not None:
-            raise ParserError("Expected {context} to be null.")
+            raise ParserError("Expected {path} to be null.".format(path=path))
         return None
 
 
 class Boolean(Parser):
-    def parse(self, value):
+    def parse(self, path, value):
         if not isinstance(value, bool):
-            raise ParserError("Expected {context} to be a boolean.")
+            raise ParserError("Expected {path} to be a boolean.".format(path=path))
         return value
 
 
 class String(Parser):
-    def parse(self, value):
+    def parse(self, path, value):
         if not isinstance(value, (str, unicode)):
-            raise ParserError("Expected {context} to be a string.")
+            raise ParserError("Expected {path} to be a string.".format(path=path))
         return value
 
 
 class Number(Parser):
-    def parse(self, value):
+    def parse(self, path, value):
         if not isinstance(value, (int, long, float)) or isinstance(value, bool):
-            raise ParserError("Expected {context} to be a number.")
+            raise ParserError("Expected {path} to be a number.".format(path=path))
         return value
 
 
 class Integer(Parser):
-    def parse(self, value):
+    def parse(self, path, value):
         if not isinstance(value, int) or isinstance(value, bool):
-            raise ParserError("Expected {context} to be an integer.")
+            raise ParserError("Expected {path} to be an integer.".format(path=path))
         return value
 
 
 class Object(Parser):
-    def __init__(self, value_parser, key_parser=None):
-        if key_parser is None:
-            key_parser = String()
+    def __init__(self, value_parser, key_parser=String()):
         self._key_parser = key_parser
         self._value_parser = value_parser
 
-    def parse(self, value):
+    def parse(self, path, value):
         if not isinstance(value, dict):
-            raise ParserError("Expected {context} to be an object.")
+            raise ParserError("Expected {path} to be an object.".format(path=path))
 
         parsed_dict = dict()
         for key, contained_value in value.iteritems():
-            with parser_context("@key={}".format(key)):
-                parsed_key = self._key_parser.parse(key)
-            with parser_context(".{}".format(key)):
-                parsed_value = self._value_parser.parse(contained_value)
+            parsed_key = self._key_parser.parse(
+                "{path}@key={key}".format(path=path, key=key), key
+            )
+            parsed_value = self._value_parser.parse(
+                "{path}.{key}".format(path=path, key=key), contained_value
+            )
             parsed_dict[parsed_key] = parsed_value
 
         return parsed_dict
@@ -119,14 +106,15 @@ class Array(Parser):
     def __init__(self, value_parser):
         self._value_parser = value_parser
 
-    def parse(self, value):
+    def parse(self, path, value):
         if not isinstance(value, list):
-            raise ParserError("Expected {context} to be an array.")
+            raise ParserError("Expected {path} to be an array.".format(path=path))
 
         parsed_list = []
         for index, contained_value in enumerate(value):
-            with parser_context("[{}]".format(index)):
-                parsed_value = self._value_parser.parse(contained_value)
+            parsed_value = self._value_parser.parse(
+                "{path}[{index}]".format(path=path, index=index), contained_value
+            )
             parsed_list.append(parsed_value)
 
         return parsed_list
@@ -136,9 +124,9 @@ class Tuple(Parser):
     def __init__(self, *value_parsers):
         self._value_parsers = value_parsers
 
-    def parse(self, value):
+    def parse(self, path, value):
         if not isinstance(value, list):
-            raise ParserError("Expected {context} to be an array.")
+            raise ParserError("Expected {path} to be an array.".format(path=path))
 
         if len(value) != len(self._value_parsers):
             raise ParserError(
@@ -151,8 +139,9 @@ class Tuple(Parser):
         for index, (value_parser, contained_value) in enumerate(
             zip(self._value_parsers, value)
         ):
-            with parser_context("[{}]".format(index)):
-                parsed_value = value_parser.parse(contained_value)
+            parsed_value = value_parser.parse(
+                "{path}[{index}]".format(path=path, index=index), contained_value
+            )
             parsed_list.append(parsed_value)
 
         return tuple(parsed_list)
@@ -166,9 +155,9 @@ class Record(Parser):
     def __init__(self, *fields):
         self._fields = fields
 
-    def parse(self, value):
+    def parse(self, path, value):
         if not isinstance(value, dict):
-            raise ParserError("Expected {context} to be an object.")
+            raise ParserError("Expected {path} to be an object.".format(path=path))
 
         parsed_record = dict()
         for name, value_parser, optional in self._fields:
@@ -177,13 +166,14 @@ class Record(Parser):
                     continue
                 else:
                     raise ParserError(
-                        'Expected {{context}} to be an object with property "{name}."'.format(
-                            name=name
+                        'Expected {path} to be an object with property "{name}."'.format(
+                            path=path, name=name
                         )
                     )
             contained_value = value[name]
-            with parser_context(".{}".format(name)):
-                parsed_value = value_parser.parse(contained_value)
+            parsed_value = value_parser.parse(
+                "{path}.{name}".format(path=path, name=name), contained_value
+            )
             parsed_record[name] = parsed_value
 
         return parsed_record
@@ -196,12 +186,11 @@ class OneOf(Parser):
 
         self._parsers = parsers
 
-    def parse(self, value):
+    def parse(self, path, value):
         errors = set()
         for parser in self._parsers:
             try:
-                with parser_context("{context}"):
-                    return parser.parse(value)
+                return parser.parse(path, value)
             except ParserError as e:
                 errors.add(str(e))
 

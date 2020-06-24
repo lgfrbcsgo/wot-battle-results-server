@@ -1,7 +1,7 @@
 from debug_utils import LOG_CURRENT_EXCEPTION
 
 
-def init(*_, **__):
+def init():
     try:
         from mod_battle_results_server import g_battle_results_server
 
@@ -10,7 +10,7 @@ def init(*_, **__):
         LOG_CURRENT_EXCEPTION()
 
 
-def fini(*_, **__):
+def fini():
     try:
         from mod_battle_results_server import g_battle_results_server
 

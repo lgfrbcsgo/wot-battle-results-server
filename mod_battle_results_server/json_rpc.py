@@ -33,11 +33,11 @@ class NotificationParser(Record):
             field("jsonrpc", StringLiteral("2.0")),
             field("method", String()),
             field("params", Any(), optional=True),
-            field("id", Fail("Expected {context} to not be present."), optional=True),
+            field("id", Fail("Expected 'id' to not be present."), optional=True),
         )
 
-    def parse(self, value):
-        parsed = super(NotificationParser, self).parse(value)
+    def parse(self, path, value):
+        parsed = super(NotificationParser, self).parse(path, value)
         return Notification(method=get(parsed, "method"), params=get(parsed, "params"))
 
 
@@ -50,8 +50,8 @@ class RequestParser(Record):
             field("id", OneOf(String(), Number(), Null())),
         )
 
-    def parse(self, value):
-        parsed = super(RequestParser, self).parse(value)
+    def parse(self, path, value):
+        parsed = super(RequestParser, self).parse(path, value)
         return Request(
             method=get(parsed, "method"),
             params=get(parsed, "params"),

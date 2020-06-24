@@ -65,7 +65,7 @@ class BattleResultsServer(object):
         if stream in self._subscribers:
             self._subscribers.remove(stream)
 
-    def get_battle_results(self, after):
+    def _get_battle_results(self, after):
         found = [record for record in self._records if record.timestamp > after]
         start = after if not found else min([record.timestamp for record in found])
         end = after if not found else max([record.timestamp for record in found])
@@ -95,7 +95,7 @@ class BattleResultsServer(object):
             if after is None:
                 after = 0
 
-            return self.get_battle_results(after)
+            return self._get_battle_results(after)
 
         return dispatcher
 
