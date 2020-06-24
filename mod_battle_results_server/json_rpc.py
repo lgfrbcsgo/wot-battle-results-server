@@ -102,8 +102,12 @@ class Dispatcher(object):
                 return serialize_to_json(response)
             return None
 
-    def add_method(self, name, handler, param_parser=Any()):
-        self._handlers[name] = (handler, param_parser)
+    def add_method(self, param_parser=Any()):
+        def decorator(handler):
+            self._handlers[handler.__name__] = (handler, param_parser)
+            return handler
+
+        return decorator
 
     def _handle(self, json):
         if isinstance(json, list):

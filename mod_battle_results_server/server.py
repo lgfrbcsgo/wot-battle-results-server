@@ -78,13 +78,25 @@ class BattleResultsServer(object):
 
     def _create_dispatcher(self, stream):
         dispatcher = Dispatcher()
-        dispatcher.add_method("subscribe", lambda _: self._subscribe(stream))
-        dispatcher.add_method("unsubscribe", lambda _: self._unsubscribe(stream))
-        dispatcher.add_method(
-            "get_battle_results",
-            lambda params: self.get_battle_results(get(params, "after") or 0),
-            param_parser=Nullable(Record(field("after", Number(), optional=True))),
+
+        @dispatcher.add_method()
+        def subscribe(_):
+            self._subscribe(stream)
+
+        @dispatcher.add_method()
+        def unsubscribe(_):
+            self._unsubscribe(stream)
+
+        @dispatcher.add_method(
+            Nullable(Record(field("after", Number(), optional=True)))
         )
+        def handle_get_battle_results(params):
+            after = get(params, "after")
+            if after is None:
+                after = 0
+
+            return self.get_battle_results(after)
+
         return dispatcher
 
     @async_task
