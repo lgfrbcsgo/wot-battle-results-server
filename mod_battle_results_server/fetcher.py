@@ -6,7 +6,7 @@ from Event import Event
 from gui.shared.gui_items.processors.common import BattleResultsGetter
 from messenger.proto.events import g_messengerEvents
 from mod_async import async_task, auto_run, from_adisp
-from mod_battle_results_server.battle_result_cache_patch import apply_patch
+from mod_battle_results_server.cache_patch import apply_patch
 from mod_battle_results_server.serialization import serialize_battle_results
 from mod_battle_results_server.util import get, safe_callback
 from PlayerEvents import g_playerEvents
