@@ -1,7 +1,7 @@
 import re
 import time
 from collections import namedtuple
-from typing import List
+from typing import Any, List
 
 from debug_utils import LOG_NOTE
 from mod_async import CallbackCancelled, async_task, auto_run, delay
@@ -29,28 +29,43 @@ BattleResultRecord = namedtuple("BattleResultRecord", ("timestamp", "battle_resu
 @auto_run
 @async_task
 def notify(stream, method, params):
+    # type: (MessageStream, str, Any) -> ...
     notification = make_notification(Notification(method, params))
     data = serialize_to_json(notification)
     yield stream.send_message(data)
 
 
-class BattleResultsServer(object):
-    def __init__(self):
-        self._keep_running = True
+class Handlers(object):
+    def __init__(self, fetcher):
+        # type: (BattleResultsFetcher) -> None
         self._subscribers = []  # type: List[MessageStream]
         self._records = []  # type: List[BattleResultRecord]
-        self._fetcher = BattleResultsFetcher()
-        self._fetcher.battle_result_fetched += self._handle_battle_result
+        fetcher.battle_result_fetched += self._on_battle_result
 
-    def _subscribe(self, stream):
+    def subscribe(self, stream):
+        # type: (MessageStream) -> None
         if stream not in self._subscribers:
             self._subscribers.append(stream)
 
-    def _unsubscribe(self, stream):
+    def unsubscribe(self, stream):
+        # type: (MessageStream) -> None
         if stream in self._subscribers:
             self._subscribers.remove(stream)
 
-    def _handle_battle_result(self, battle_result):
+    def get_battle_results(self, after):
+        # type: (int) -> ...
+        found = [record for record in self._records if record.timestamp > after]
+        start = after if not found else min([record.timestamp for record in found])
+        end = after if not found else max([record.timestamp for record in found])
+
+        return {
+            "start": start,
+            "end": end,
+            "battleResults": [record.battle_result for record in found],
+        }
+
+    def _on_battle_result(self, battle_result):
+        # type: (Any) -> None
         record = BattleResultRecord(
             timestamp=int(time.time()), battle_result=battle_result
         )
@@ -65,42 +80,38 @@ class BattleResultsServer(object):
         for stream in self._subscribers:
             notify(stream, "subscription", params)
 
-    def _handle_get_battle_results(self, after):
-        found = [record for record in self._records if record.timestamp > after]
-        start = after if not found else min([record.timestamp for record in found])
-        end = after if not found else max([record.timestamp for record in found])
 
-        return {
-            "start": start,
-            "end": end,
-            "battleResults": [record.battle_result for record in found],
-        }
+def create_dispatcher(stream, handlers):
+    # type: (MessageStream, Handlers) -> Dispatcher
+    dispatcher = Dispatcher()
 
-    def _create_dispatcher(self, stream):
-        dispatcher = Dispatcher()
+    @dispatcher.add_method()
+    def subscribe(params):
+        handlers.subscribe(stream)
 
-        @dispatcher.add_method()
-        def subscribe(_):
-            self._subscribe(stream)
+    @dispatcher.add_method()
+    def unsubscribe(params):
+        handlers.unsubscribe(stream)
 
-        @dispatcher.add_method()
-        def unsubscribe(_):
-            self._unsubscribe(stream)
+    @dispatcher.add_method(
+        param_parser=Nullable(Record(field("after", Number(), optional=True)))
+    )
+    def get_battle_results(params):
+        after = get(params, "after")
+        if after is None:
+            after = 0
 
-        @dispatcher.add_method(
-            Nullable(Record(field("after", Number(), optional=True)))
-        )
-        def get_battle_results(params):
-            after = get(params, "after")
-            if after is None:
-                after = 0
+        return handlers.get_battle_results(after)
 
-            return self._handle_get_battle_results(after)
+    return dispatcher
 
-        return dispatcher
 
+def create_protocol(handlers, allowed_origins):
+    # type: (Handlers, List) -> ...
+    @websocket_protocol(allowed_origins=allowed_origins)
     @async_task
-    def _handle_connection(self, stream):
+    def protocol(server, stream):
+        # type: (Server, MessageStream) -> ...
         host, port = stream.peer_addr
         origin = stream.handshake_headers["origin"]
 
@@ -110,7 +121,7 @@ class BattleResultsServer(object):
             )
         )
 
-        dispatcher = self._create_dispatcher(stream)
+        dispatcher = create_dispatcher(stream, handlers)
 
         try:
             while True:
@@ -119,7 +130,7 @@ class BattleResultsServer(object):
                 if response:
                     yield stream.send_message(response)
         finally:
-            self._unsubscribe(stream)
+            handlers.unsubscribe(stream)
 
             LOG_NOTE(
                 "{origin} ([{host}]:{port}) disconnected.".format(
@@ -127,17 +138,22 @@ class BattleResultsServer(object):
                 )
             )
 
+    return protocol
+
+
+class BattleResultsServer(object):
+    def __init__(self):
+        self._keep_running = True
+        self._fetcher = BattleResultsFetcher()
+
     @auto_run
     @async_task
     def serve(self):
-        @websocket_protocol(allowed_origins=ORIGIN_WHITELIST)
-        @async_task
-        def protocol(_, stream):
-            yield self._handle_connection(stream)
+        self._fetcher.start()
 
         LOG_NOTE("Starting server on port {}".format(PORT))
 
-        self._fetcher.start()
+        protocol = create_protocol(Handlers(self._fetcher), ORIGIN_WHITELIST)
 
         try:
             with Server(protocol, PORT) as server:
