@@ -20,7 +20,7 @@ RELEASE_DEPENDENCIES = [
     "https://github.com/lgfrbcsgo/wot-async/releases/download/v0.1.3/lgfrbcsgo.async_0.1.3.wotmod",
     "https://github.com/lgfrbcsgo/wot-async-server/releases/download/v0.2.3/lgfrbcsgo.async-server_0.2.3.wotmod",
     "https://github.com/lgfrbcsgo/wot-websocket-server/releases/download/v0.3.2/lgfrbcsgo.websocket-server_0.3.2.wotmod",
-    "https://github.com/lgfrbcsgo/wot-hooking/releases/download/v0.1.0/lgfrbcsgo.hooking_0.1.0.wotmod",
+    "https://github.com/lgfrbcsgo/wot-hooking/releases/download/v0.1.1/lgfrbcsgo.hooking_0.1.1.wotmod",
 ]
 
 
