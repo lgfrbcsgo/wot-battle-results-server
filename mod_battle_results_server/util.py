@@ -1,6 +1,4 @@
-import inspect
 import json
-import sys
 from functools import wraps
 
 from debug_utils import LOG_CURRENT_EXCEPTION
@@ -49,33 +47,3 @@ def safe_callback(func):
             LOG_CURRENT_EXCEPTION()
 
     return wrapper
-
-
-def hook(hook_handler):
-    def build_decorator(module, func_name):
-        def decorator(func):
-            orig_func = getattr(module, func_name)
-
-            @wraps(orig_func)
-            def func_wrapper(*args, **kwargs):
-                return hook_handler(orig_func, func, *args, **kwargs)
-
-            if inspect.ismodule(module):
-                setattr(sys.modules[module.__name__], func_name, func_wrapper)
-            elif inspect.isclass(module):
-                setattr(module, func_name, func_wrapper)
-
-            return func
-
-        return decorator
-
-    return build_decorator
-
-
-@hook
-def override(orig_func, func, *args, **kwargs):
-    try:
-        return func(orig_func, *args, **kwargs)
-    except:
-        LOG_CURRENT_EXCEPTION()
-        return orig_func(*args, **kwargs)

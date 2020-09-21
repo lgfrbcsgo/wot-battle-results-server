@@ -1,5 +1,5 @@
 from mod_async import AsyncMutex, AsyncValue, async_task, auto_run
-from mod_battle_results_server.util import override
+from mod_hooking.strategy import override
 from shared_utils.account_helpers.BattleResultsCache import BattleResultsCache
 
 
