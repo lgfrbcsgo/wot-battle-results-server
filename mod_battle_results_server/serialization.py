@@ -26,6 +26,7 @@ def sanitize_battle_results(results):
             unset(vehicle, "xpReplay")
             unset(vehicle, "creditsReplay")
             unset(vehicle, "tmenXPReplay")
+            unset(vehicle, "flXPReplay")
             unset(vehicle, "goldReplay")
             unset(vehicle, "crystalReplay")
             unset(vehicle, "eventCoinReplay")
